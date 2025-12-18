@@ -3,7 +3,7 @@ import os
 
 def empty_dir(directory, remove=False):
     """Empty a directory and optionally remove it.
-    
+
     It removes all the files and directories inside the directory.
     """
     for f in os.listdir(directory):
@@ -12,4 +12,4 @@ def empty_dir(directory, remove=False):
         else:
             os.remove(os.path.join(directory, f))
     if remove:
-        os.rmdir(directory) 
+        os.rmdir(directory)

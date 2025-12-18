@@ -1,13 +1,14 @@
 from typing import overload, Dict, List, Tuple
 from torch.utils.data import Dataset, IterableDataset
-import numpy as np
+
 from .tartan_kitti import TartanKittiDataset
 from .tartan_pt import TartanPT
+
 
 class TorchTKDataset(TartanKittiDataset, Dataset):
     r"""A subclass :class:`TartanKittiDataset` used as a wrapper for :class:`torch.Dataset`.
 
-    This is a map style dataset. 
+    This is a map style dataset.
     This will be mainly used because we can use differents samplers with it and because
     we will put in it different ways of separating the dataset.
 
@@ -18,7 +19,7 @@ class TorchTKDataset(TartanKittiDataset, Dataset):
             The keys of the dataset
 
     """
-    
+
     def __len__(self):
         return len(self.timeline)
 
@@ -29,20 +30,21 @@ class TorchTKDataset(TartanKittiDataset, Dataset):
         key = self.timeline[idx][0]
         idx = self.timeline[idx][1]
         return {"key": key, "data": self.loaders[key][idx], "timestamp": self.timestamps[key][idx]}
-        
 
-    def __getitem__tuple(self, idx : Tuple[str, int]) -> dict:
+    def __getitem__tuple(self, idx: Tuple[str, int]) -> dict:
         key, idx = idx
         return {"key": key, "data": self.loaders[key][idx], "timestamp": self.timestamps[key][idx]}
 
     @overload
-    def __getitem__(self, idx : int) -> dict:
+    def __getitem__(self, idx: int) -> dict:
         ...
+
     @overload
-    def __getitem__(self, idx : Tuple[str, int]) -> dict:
+    def __getitem__(self, idx: Tuple[str, int]) -> dict:
         ...
+
     @overload
-    def __getitem__(self, idx : Dict[str, List[int]]) -> dict:
+    def __getitem__(self, idx: Dict[str, List[int]]) -> dict:
         ...
 
     def __getitem__(self, idx):
@@ -52,6 +54,7 @@ class TorchTKDataset(TartanKittiDataset, Dataset):
             return self.__getitem__tuple(idx)
         else:
             raise TypeError(f"Index should be an int or a dict not {type(idx)}")
+
 
 class TorchTKIterDataset(TartanKittiDataset, IterableDataset):
     r"""A subclass :class:`TartanKittiDataset` used as a wrapper for :class:`torch.IterableDataset`.
@@ -64,14 +67,13 @@ class TorchTKIterDataset(TartanKittiDataset, IterableDataset):
             The directory where the dataset is stored
         keys (List) :
             The keys of the dataset
-            
+
     """
+
     def __next__(self):
         key, idx = super().__next__()
         return {"key": key, "data": self.loaders[key][idx], "timestamp": self.timestamps[key][idx]}
-    
+
 
 class TorchTPTDataset(TartanPT, Dataset):
     ...
-
-    

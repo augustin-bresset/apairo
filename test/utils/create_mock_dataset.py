@@ -1,5 +1,6 @@
+
 from src.core import AbstractDataset
-from test.paths import tmp_path
+
 
 class MockDataset(AbstractDataset):
     def __init__(self, *args, **kwargs):
@@ -8,25 +9,20 @@ class MockDataset(AbstractDataset):
 
     def load(self, key: str, idx: int):
         return self.data[key][idx]
-    
+
     def __len__(self):
         return 1
-    
 
     @property
     def shape(self):
         return (1,)
-    
+
     def __iter__(self):
         return self
-    
+
     def __next__(self):
         return self.data
-    
+
 
 def create_mock_dataset():
     return MockDataset()
-
-    
-    
-

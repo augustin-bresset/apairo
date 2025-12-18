@@ -12,7 +12,7 @@ str_to_loader = {
     "img": IMGLoader,
     "npys": NPYSLoader,
     "npy": NPYLoader,
-    "npys_img": NPYSLoader # For the moment, we will use npys by default
+    "npys_img": NPYSLoader  # For the moment, we will use npys by default
 }
 
 # Loader is a abstract class : not public
@@ -27,8 +27,10 @@ __all__ = [
     "load_profile"
 ]
 
+
 def load_timestamps(file):
     return np.loadtxt(file)
+
 
 def loads_timestamps(keys: list, files: dict) -> dict:
     r"""Load all the timestamps from the files.
@@ -41,22 +43,23 @@ def loads_timestamps(keys: list, files: dict) -> dict:
             List of the files in the dataset (they are presumed to be the directories)
     """
     timestamps_replacement = {
-        "depth_left" : "image_left",
-        "local_dino_map" : "local_gridmap",
-        "stereo_colored_point_cloud_gmf" : "stereo_colored_point_cloud",
+        "depth_left": "image_left",
+        "local_dino_map": "local_gridmap",
+        "stereo_colored_point_cloud_gmf": "stereo_colored_point_cloud",
     }
     timestamps = {}
     no_ts_directorys = []
     # Load the timestamps that already exist
     for key in keys:
-        if "timestamps.txt" in os.listdir(files[key]):
-            timestamps[key] = load_timestamps(os.path.join(files[key], "timestamps.txt"))
-        else:
-            no_ts_directorys.append(key)
+        if key not in str_to_loader:
+            if "timestamps.txt" in os.listdir(files[key]):
+                timestamps[key] = load_timestamps(os.path.join(files[key], "timestamps.txt"))
+            else:
+                no_ts_directorys.append(key)
 
     # Load the timestamps that are not originally in the directory
     for no_ts_directory in no_ts_directorys:
-        if not no_ts_directory in timestamps_replacement:
+        if no_ts_directory not in timestamps_replacement:
             raise ValueError(f"No timestamps for {no_ts_directory}")
         timestamps[no_ts_directory] = timestamps[timestamps_replacement[no_ts_directory]]
 

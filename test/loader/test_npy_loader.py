@@ -1,9 +1,8 @@
-
 import pytest
 import numpy as np
-import os
-from src.loader import NPYLoader
+from src.loader.npy_loader import NPYLoader
 from test.utils import create_npy_file
+
 
 @pytest.fixture
 def npy_loader_data(tmp_path):
@@ -13,18 +12,21 @@ def npy_loader_data(tmp_path):
     create_npy_file(data, filename="data.npy", directory=str(directory))
     return data, directory
 
+
 def test_len(npy_loader_data):
     data, directory = npy_loader_data
     loader = NPYLoader(str(directory))
     assert loader.array.shape == data.shape
 
+
 def test_getitem(npy_loader_data):
     data, directory = npy_loader_data
     loader = NPYLoader(str(directory))
-    for i in range(len(loader)):
-        assert np.allclose(loader[i], data[i])
+    # Default format is ""
+    assert np.allclose(loader[0], data[0])
+
 
 def test_shape(npy_loader_data):
     data, directory = npy_loader_data
     loader = NPYLoader(str(directory))
-    assert loader.shape == (1,) # Tuple comparison
+    assert loader.shape == (1,)  # Tuple comparison

@@ -1,7 +1,6 @@
 LICENSE
 README.md
 pyproject.toml
-setup.py
 src/core/__init__.py
 src/core/abstract_batch_sampler.py
 src/core/abstract_dataset.py

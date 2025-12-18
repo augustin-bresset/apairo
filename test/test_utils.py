@@ -1,10 +1,9 @@
-
 import pytest
-import os
+import numpy as np
 from src.utils.utils import dict_flatten, npy_analyser
 # Assuming paths is available or we mock it
-# from test.paths import tartan2kitti_path 
-# Replaced with fixture if possible, or use logic
+# from test.paths import shutil
+
 
 @pytest.fixture
 def nested_dict():
@@ -17,6 +16,18 @@ def nested_dict():
             }
         }
     }
+
+
+@pytest.fixture
+def data_dict():
+    return {
+        "a": np.array([1, 2, 3]),
+        "b": {
+            "c": np.array([4, 5, 6]),
+            "d": np.array([7, 8, 9])
+        }
+    }
+
 
 def test_dict_flatten(nested_dict):
     expected = {
@@ -31,22 +42,25 @@ def test_dict_flatten(nested_dict):
         "b.c": 2,
         "b.d.e": 3
     }
-    format_key = lambda k, sk: f"{k}.{sk}"
+
+    def format_key(k, sk):
+        return f"{k}.{sk}"
     assert dict_flatten(nested_dict, format_key) == expected, "format_key argument is not working"
+
 
 def test_npy_analyser(tmp_path):
     # Mocking folder structure instead of relying on external path
     folder = tmp_path / "tartan2kitti"
     folder.mkdir()
-    
+
     livox = folder / "livox"
     livox.mkdir()
     (livox / "000000.npy").touch()
     (livox / "000000_intensity.npy").touch()
-    
+
     cmd = folder / "cmd"
     cmd.mkdir()
     (cmd / "000000.npy").touch()
-    
+
     assert npy_analyser(str(livox)) == {"", "intensity"}
     assert npy_analyser(str(cmd)) == {""}

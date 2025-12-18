@@ -2,7 +2,6 @@ Metadata-Version: 2.4
 Name: data-apairo
 Version: 0.1.dev0
 Summary: Extensible Framework to manage data
-Author: Augustin Bresset
 Author-email: Augustin Bresset <augustin.bresset@gmail.com>
 License: MIT
 Classifier: Programming Language :: Python :: 3
@@ -22,7 +21,6 @@ Requires-Dist: pytest; extra == "dev"
 Requires-Dist: black; extra == "dev"
 Requires-Dist: isort; extra == "dev"
 Requires-Dist: flake8; extra == "dev"
-Dynamic: author
 Dynamic: license-file
 
 # Data Apairo

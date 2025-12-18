@@ -2,13 +2,13 @@ from typing import Dict
 import numpy as np
 
 from src.utils.types import Timestamp
-from src.utils.timestamps import get_indexes, get_reference_timestamps, get_end_of_time
-from ..core import AbstractSampler
+from src.utils.timestamps import get_indexes, get_reference_timestamps
+from src.core import AbstractSampler
 
 
 class LowFreqUniformSampler(AbstractSampler):
     r""" Implement :class:`AbstractSampler` using frequency of the slowest data stream as reference.
-    
+
     Samples the dataset by batching data according to the flow with the lowest frequency.
     For each iteration, the sampler stacks data corresponding to the slowest data stream.
     To be sure that each sample has the same size (because different batch can have different size),
@@ -33,8 +33,8 @@ class LowFreqUniformSampler(AbstractSampler):
         self.sample_last_indexes = get_indexes(self.timestamps, self.reference)
         self._delta_indexes = {
             key: np.array(range(
-                min([self.sample_last_indexes[key][i+1] - self.sample_last_indexes[key][i] 
-                     for i in range(len(self.sample_last_indexes[key])-1)]) * self.sample_size), 
+                min([self.sample_last_indexes[key][i + 1] - self.sample_last_indexes[key][i]
+                     for i in range(len(self.sample_last_indexes[key]) - 1)]) * self.sample_size),
                 dtype=int)
             for key in self.keys
         }
@@ -42,29 +42,27 @@ class LowFreqUniformSampler(AbstractSampler):
         # print(*[self.sample_last_indexes[key][:5] for key in self.keys])
         # print(*[self._delta_indexes[key][:5] for key in self.keys])
 
-
     def get_sample(self, index: int) -> Dict[str, int]:
         r"""Get the `sample` of indexes that correspond to the :arg:`index` in the dataset timeline.
 
         Be careful, this index is not the index of the sampler, but the index of the dataset.
-        
+
         Example:
             If the dataset has 10 timestamps and the batch size is 3, the sampler will have 8 batches.
             (0, 1, 2), (1, 2, 3), (2, 3, 4), ... (7, 8, 9).
             If you want to get the first batch, you should call `get_sample(0)`.
             """
-        if index > len(self) - 1: # Fixed check to match new len
+        if index > len(self) - 1:  # Fixed check to match new len
             raise IndexError("Index out of range")
-        
 
-        return { key: (index + self._delta_indexes[key]) for key in self.keys }
+        return {key: (index + self._delta_indexes[key]) for key in self.keys}
 
     def __iter__(self):
         self._index = 0
         if self.shuffle:
             np.random.shuffle(self._indexes)
         return self
-    
+
     def __next__(self):
         if self._index >= len(self):
             raise StopIteration
@@ -76,7 +74,7 @@ class LowFreqUniformSampler(AbstractSampler):
             raise StopIteration
         self._index += 1
         return batch
-    
+
     def iterate(self, start=0, end=None):
         """Iterate over the dataset.
         """

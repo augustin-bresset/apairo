@@ -1,40 +1,44 @@
 import os
-import sys
 import numpy as np
-import argparse
 import matplotlib.pyplot as plt
 
 
 def load_timestamps(file):
     return np.loadtxt(file)
 
+
 def get_frequency(timestamps: np.array) -> float:
     """Return the frequency of the timestamps"""
     return 1 / np.mean(timestamps[1:] - timestamps[:-1])
+
 
 def get_duration(timestamps: np.array) -> float:
     """Return the offset of the timestamps"""
     return timestamps[-1] - timestamps[0]
 
+
 def get_offset(timestamps: np.array) -> float:
     """Return the offset of the timestamps"""
     return timestamps[0]
 
+
 def get_end_of_time(timestamps: dict) -> float:
     """Return the end of the time of the timestamps"""
     return max([timestamps[key][-1] for key in timestamps])
+
 
 def get_reference_timestamps(timestamps: dict) -> str:
     """Return the key of the timestamps with the lowest frequency"""
     freq = {key: get_frequency(value) for key, value in timestamps.items()}
     return min(freq, key=freq.get)
 
+
 def get_indexes(timestamps: dict, reference=None) -> dict:
     """
     Given the timestamps of each fields, return the indexes for each batch.
 
     The reference is used to create a new batch for each iteration of his timestamp.
-    
+
     If there is no reference, the timestamp with the lowest frequency is used.
     This way, the batch will be alaways full with new data.
     We will consider the data that begin after the first timestamp of the reference.
@@ -50,8 +54,8 @@ def get_indexes(timestamps: dict, reference=None) -> dict:
             Indexes is an array of the latest index for each batch.
 
     Example:
-    >>> timestamps = { 
-        'a': np.array([0, 3, 6, 9]), 
+    >>> timestamps = {
+        'a': np.array([0, 3, 6, 9]),
         'b': np.array([0, 1, 2, 3, 4, 5, 6, 7, 8, 9])
         }
     >>> get_indexes(timestamps)
@@ -62,6 +66,7 @@ def get_indexes(timestamps: dict, reference=None) -> dict:
     indexes = {key: np.searchsorted(value, timestamps[reference]) for key, value in timestamps.items()}
     return indexes
 
+
 def show_timestamps(timestamps: dict, index_max=None):
     """Show the timestamps of each fields"""
     if index_max is not None:
@@ -70,11 +75,12 @@ def show_timestamps(timestamps: dict, index_max=None):
 
     for i, (key, value) in enumerate(timestamps.items()):
         if index_max is not None:
-            value = value[value < time_end] 
-        plt.plot(value, i*np.ones_like(value), label=key, marker='o', linestyle='None')
+            value = value[value < time_end]
+        plt.plot(value, i * np.ones_like(value), label=key, marker='o', linestyle='None')
     plt.legend()
     plt.show()
-    
+
+
 def show_indexed_timestamps(timestamps: dict, indexes: dict, index_max=None):
     """Show the timestamps of each fields
     Args:
@@ -88,17 +94,18 @@ def show_indexed_timestamps(timestamps: dict, indexes: dict, index_max=None):
     if index_max is not None:
         ref = get_reference_timestamps(timestamps)
         time_end = timestamps[ref][index_max]
-    timestamps_indexed = {key: [value[indexes[key][i-1] : indexes[key][i]] for i in range(1, len(indexes[key]))] for key, value in timestamps.items()}
-    
+    timestamps_indexed = {key: [value[indexes[key][i - 1]: indexes[key][i]]
+                                for i in range(1, len(indexes[key]))] for key, value in timestamps.items()}
+
     colors = ['b', 'g']
     for i, (key, value) in enumerate(timestamps_indexed.items()):
         for j, subvalue in enumerate(value):
-            if index_max is not None and len(subvalue) >0 and  subvalue[0] > time_end:
+            if index_max is not None and len(subvalue) > 0 and subvalue[0] > time_end:
                 break
 
             plt.plot(
                 subvalue,
-                i*np.ones_like(subvalue), marker='o', linestyle='None', color=colors[j%2])
+                i * np.ones_like(subvalue), marker='o', linestyle='None', color=colors[j % 2])
 
     plt.show()
 

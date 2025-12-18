@@ -5,6 +5,7 @@ import torch
 from src.utils import npy_analyser
 from ..core import AbstractLoader
 
+
 class NPYSLoader(AbstractLoader):
     """A :class:`Loader` for `npy` files in a directory.
 
@@ -15,20 +16,21 @@ class NPYSLoader(AbstractLoader):
             The directory that contains the `npy` files.
 
     Example:
-        livox 
+        livox
         |--- 000000.npy
         |--- 000000_intensity.npy
         |--- ...
     """
+
     def __init__(self, directory):
         self.directory = directory
         self.npy_formats = npy_analyser(directory)
         self.files = {npy_format: [] for npy_format in self.npy_formats}
         self.key = ""
         for file in filter(lambda f: f[-3:] == "npy", os.listdir(directory)):
-            if "_" in file: 
+            if "_" in file:
                 file_ext = file.split("_")[-1].split(".")[0]
-                if not file_ext in self.files:
+                if file_ext not in self.npy_formats: # Fixed boolean check
                     raise ValueError(f"New format {file_ext} found in {directory}")
             else:
                 file_ext = ""
@@ -45,7 +47,7 @@ class NPYSLoader(AbstractLoader):
 
     def __len__(self):
         return len(self.files[''])
-    
+
     def set_format(self, key):
         self.key = key
 

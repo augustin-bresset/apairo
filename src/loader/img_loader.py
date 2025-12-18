@@ -1,12 +1,13 @@
 import os
-from typing import List, Tuple, Union
+from typing import List, Tuple
 from torchvision.io import read_image
 from ..core import AbstractLoader
 
+
 class IMGLoader(AbstractLoader):
     r"""A :class:`Loader` class for images in a directory.
-    
-    It uses the :meth:`torchvision.io.read_image` function to read the images 
+
+    It uses the :meth:`torchvision.io.read_image` function to read the images
     and so supports all the formats that the function supports : `png` and `jpg`.
 
     Args:
@@ -14,16 +15,17 @@ class IMGLoader(AbstractLoader):
             The directory that contains the images.
 
     Notes:
-        Actually, the loader stock all the images names in memory. 
+        Actually, the loader stock all the images names in memory.
         It can be change if it takes too much memory.
     """
 
-    directory : str
-    files : List[str]
-    index : int
-    shape : Tuple[int, ...]
+    directory: str
+    files: List[str]
+    index: int
+    shape: Tuple[int, ...]
+
     def __init__(self, directory):
-        
+
         self.directory = directory
         self.files = list(sorted(
             filter(lambda f: f[-3:] in {"png", "jpg"}, os.listdir(directory)),

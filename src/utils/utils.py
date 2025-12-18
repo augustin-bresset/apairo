@@ -1,8 +1,8 @@
 import os
-import sys
 import torch
 import numpy as np
-import torch
+
+
 def quaternion_invert(quaternion: torch.Tensor) -> torch.Tensor:
     """
     Standard quaternion inversion.
@@ -27,12 +27,12 @@ def quaternion_multiply(q1: torch.Tensor, q2: torch.Tensor) -> torch.Tensor:
     """
     w1, x1, y1, z1 = q1.unbind(dim=-1)
     w2, x2, y2, z2 = q2.unbind(dim=-1)
-    
+
     w = w1 * w2 - x1 * x2 - y1 * y2 - z1 * z2
     x = w1 * x2 + x1 * w2 + y1 * z2 - z1 * y2
     y = w1 * y2 - x1 * z2 + y1 * w2 + z1 * x2
     z = w1 * z2 + x1 * y2 - y1 * x2 + z1 * w2
-    
+
     return torch.stack((w, x, y, z), dim=-1)
 
 
@@ -78,10 +78,9 @@ def matrix_to_rotation_6d(matrix: torch.Tensor) -> torch.Tensor:
     return matrix[..., :2].clone().reshape(batch_dim + (6,))
 
 
-
 def npy_analyser(folder):
     """Analyse the npy files in a folder and return the different formats.
-    
+
     Example:
     livox
     |--- 000000.npy
@@ -91,7 +90,7 @@ def npy_analyser(folder):
 
     >>> npy_analyser("livox")
     {"", "intensity"}
-        
+
     """
     formats = set()
     for file in filter(lambda f: f[-3:] == "npy", os.listdir(folder)):
@@ -105,16 +104,19 @@ def npy_analyser(folder):
 
 def select_sequence(traj, keys, start, length):
     return {
-        key: traj[key][start : start + length] for key in keys
+        key: traj[key][start: start + length] for key in keys
     }
+
 
 def get_rel_quat(quat, reference_quat):
     """Return the relative rotations in quaternion between two sequences of quaternions"""
     inv_quat = quaternion_invert(reference_quat)
     return quaternion_multiply(quat, inv_quat)
 
+
 def quat_to_6drot(quat):
     return matrix_to_rotation_6d(quaternion_to_matrix(quat))
+
 
 def dict_to_tensor(tensor: torch.Tensor, flatten_temporal_dim):
     if flatten_temporal_dim:
@@ -126,18 +128,19 @@ def dict_to_tensor(tensor: torch.Tensor, flatten_temporal_dim):
 def tensor_to_dict(tensor: torch.Tensor, keys, dict_config):
     list_len = [np.prod(size) for key, size in dict_config if key in keys]
     tensor_split = torch.spit(tensor, list_len, dim=-1)
-    
+
     return {
         key: tensor for key, tensor in zip(keys, tensor_split)
     }
 
-def dict_flatten(d, format_key=lambda _, sk:sk):
+
+def dict_flatten(d, format_key=lambda _, sk: sk):
     """Take a tree of dict and flatten it.
     The key_format function is used to format the key of the subdicts.
-    An example of the key_format function is: 
+    An example of the key_format function is:
         format_key = lambda k, sk: f"{k}.{sk}"
-    By default, the key_format function is the identity function with the subkey as the key.   
-    
+    By default, the key_format function is the identity function with the subkey as the key.
+
     Args:
         d (dict): A tree of dict
         format_key (callable): A function that takes two arguments, the key and the subkey, and returns the new key.
@@ -145,7 +148,14 @@ def dict_flatten(d, format_key=lambda _, sk:sk):
     flat_dict = {}
     for key, value in d.items():
         if isinstance(value, dict):
-            flat_dict.update({format_key(key, subkey): subvalue for subkey, subvalue in dict_flatten(value, format_key).items()})
+            flat_dict.update({format_key(key, subkey): subvalue for subkey,
+                             subvalue in dict_flatten(value, format_key).items()})
         else:
             flat_dict[key] = value
     return flat_dict
+
+
+def map_recursive(x, func):
+    if isinstance(x, dict):
+        return {k: map_recursive(v, func) for k, v in x.items()}
+    return func(x)

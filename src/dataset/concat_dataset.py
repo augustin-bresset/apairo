@@ -1,24 +1,24 @@
-import torch
 import numpy as np
 from typing import List
 from src.core import AbstractDataset
+
 
 class ConcatDataset(AbstractDataset):
     r""" A :class:`AbstractRobotDataset` subclass that manage
     multiple dataset as one.
 
-    
-    ..note:: 
+
+    ..note::
     It permits to concatenate multiple dataset of diferents types as well.
     The complexity here is to not load all the dataset at once
     but only the one that is needed.
-    
+
     """
 
-    datasets : List[AbstractDataset]
-    keys : List[str]
-    
-    def __init__(self, datasets : List[AbstractDataset]):
+    datasets: List[AbstractDataset]
+    keys: List[str]
+
+    def __init__(self, datasets: List[AbstractDataset]):
         r""" Initialize the ConcatDataset.
 
         ..note::
@@ -27,21 +27,20 @@ class ConcatDataset(AbstractDataset):
         The cumulative lengths is used to manage the index of the active dataset.
         """
         self.datasets = datasets
-        self.check_keys(setter=True, warnings=False)     
+        self.check_keys(setter=True, warnings=False)
 
         self.lengths = np.array([len(dataset) for dataset in self.datasets], dtype=int)
         self.cumulative_lengths = np.cumsum(self.lengths)
-
 
     def _get_corresponding_dataset(self, idx) -> int:
         """Get the corresponding dataset index of the given index."""
         if idx < 0 or idx >= self.cumulative_lengths[-1]:
             raise IndexError("Index out of range")
         return np.argmax(self.cumulative_lengths > idx)
-    
+
     def check_keys(self, warnings=False, setter=True):
         """Check if all the dataset have the same keys.
-        
+
         Args:
             warnings (bool) :
                 A flag that indicates if the function should raise an error
@@ -62,10 +61,9 @@ class ConcatDataset(AbstractDataset):
                 dataset.keys = keys
             self.keys = keys
 
-
     def __len__(self):
         return sum(self.lengths)
-    
+
     def __getitem__(self, idx):
         """Get the item at the given index."""
         if idx < 0 or idx >= len(self):
@@ -76,10 +74,8 @@ class ConcatDataset(AbstractDataset):
     def __iter__(self):
         self.active_dataset = 0
         return self
-    
+
     def __next__(self):
         if self.active_dataset >= len(self.datasets):
             raise StopIteration
         return next(self.datasets[self.active_dataset])
-    
-    

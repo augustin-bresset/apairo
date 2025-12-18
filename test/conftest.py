@@ -10,6 +10,7 @@ from src.loader import (
     PTLoader,
 )
 
+
 @pytest.fixture
 def npy_file(tmp_path_factory):
 
@@ -17,8 +18,9 @@ def npy_file(tmp_path_factory):
         path = tmp_path_factory.mktemp(directory) / filename
         np.save(path, data)
         return path
-    
+
     return _npy_file
+
 
 @pytest.fixture
 def npy_loader(npy_file):
@@ -27,12 +29,13 @@ def npy_loader(npy_file):
         path = npy_file(data, filename, directory)
         loader = NPYLoader(path.parent)
         return loader
-    
+
     return _npy_loader
+
 
 @pytest.fixture
 def npys_loader(npy_file):
-    
+
     def _npys_loader(shape, directory, file_spec=""):
         dim = shape[0]
         for i in range(dim):
@@ -45,9 +48,10 @@ def npys_loader(npy_file):
         return loader
     return _npys_loader
 
+
 @pytest.fixture
 def img_loader(tmp_path_factory):
-    
+
     def _img_loader(shape, directory):
         dim = shape[0]
         for i in range(dim):
@@ -58,13 +62,13 @@ def img_loader(tmp_path_factory):
         return loader
     return _img_loader
 
+
 @pytest.fixture
 def pt_loader(tmp_path_factory):
-    
+
     def _pt_loader(data, filename, directory):
         path = tmp_path_factory.mktemp(directory) / filename
         torch.save(data, path)
         loader = PTLoader(path.parent)
         return loader
     return _pt_loader
-    

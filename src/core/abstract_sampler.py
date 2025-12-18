@@ -1,5 +1,6 @@
-from abc import ABC, abstractmethod
-from typing import Dict, Iterator, Union, Sequence, SupportsFloat
+from abc import ABC
+from typing import Sequence, SupportsFloat, Union
+
 
 from torch.utils.data import Sampler
 from src.utils.types import Timestamp
@@ -21,9 +22,9 @@ class AbstractSampler(Sampler, ABC):
             A flag that indicates if the sampler iterate over batches of the same size
     """
 
-    timestamps : Union[Timestamp, Sequence[SupportsFloat]]
-    sample_size : int
-    is_uniform : bool
+    timestamps: Union[Timestamp, Sequence[SupportsFloat]]
+    sample_size: int
+    is_uniform: bool
 
     def __init__(self, timestamps: Timestamp, sample_size: int = 1):
         super().__init__()
@@ -34,7 +35,7 @@ class AbstractSampler(Sampler, ABC):
     def sample_size(self) -> int:
         """Return the batch size"""
         return self._sample_size
-    
+
     @sample_size.setter
     def sample_size(self, sample_size: int):
         """Set the batch size"""
@@ -46,4 +47,3 @@ class AbstractSampler(Sampler, ABC):
     def keys(self) -> Sequence[str]:
         """Return the keys of the timestamp"""
         return self.timestamps.keys()
-
