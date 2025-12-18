@@ -1,0 +1,10 @@
+directories:
+  example: 
+    path: "example"
+    keys:
+     - cmd
+     - controls
+     - gps_odom 
+    type: training
+
+  

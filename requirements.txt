@@ -1,0 +1,6 @@
+numpy
+matplotlib
+rospy
+opencv-python
+torch
+torchvision

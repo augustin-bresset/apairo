@@ -1,0 +1,15 @@
+# Contains the fields of a trainer config file and their necessity (required | optional)
+
+num_step_between_samples: required
+in_keys: required 
+out_keys: required
+
+train_dataset:
+  directory: required
+
+test_dataset:
+  directory: required
+
+neural_network:
+  _target_: required
+

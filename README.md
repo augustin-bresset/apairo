@@ -1,0 +1,222 @@
+# Data Apairo
+
+## Current development status
+
+The project is currently in development and is not yet ready for use.
+The `trainers` and `exemple`(oups french term) folders are not functional yet.
+
+
+## Overview
+
+Data Apairo is a project designed to manage datasets for machine learning and data analysis from robotics experiments.
+It provides tools for loading, processing, and splitting datasets, as well as utilities for configuration and logging.
+
+It is presented as an **extensive framework** for managing datasets in robotics, with a focus on time-series data.
+`Datasets` used in robotics are generally time-series data, in which the data is asynchronous and pseudo-periodic.
+This results in challenges such as the synchronization of the data during sampling, the management of time, and the management of the data itself to avoid RAM overflow, for example.
+
+It is built to be easily extensible and customizable, with a focus on simplicity and ease of use.
+For example, some `Sampler` are already implemented but because they are model-dependent, it is highly recommended to implement your own.
+
+Finally, we invite the user to use the existing `Objects` or create their own to manage the data in the way they want.
+
+The user can add their own `Dataset` by implementing a subclass of `AbstractDataset` that will interpret the data in the way they want.
+
+Then manage their pipeline with `Torch` functionalities and `Sampler` to manage the data in the way they want.
+
+## Getting Started
+
+### Prerequisites
+
+- Python 3.8 or higher
+- `pip` package manager
+
+### Installation
+
+1. Clone the repository:
+
+    ```sh
+    git clone https://gitlab.ensta.fr/bresset/apero
+    cd APAIRO
+    ```
+
+2. Install the required packages:
+
+    ```sh
+    # Optional: Create a virtual environment
+    python3 -m venv venv
+    source venv/bin/activate
+
+    # Install the required packages
+    pip install -r requirements.txt
+    ```
+
+### Usage
+
+#### Dataset
+
+Different datasets are available in the `src/dataset` directory.
+For the example, we will use the `TartanKittiDataset` dataset.
+
+All of the datasets contain a `__getitem__` method that returns a dictionary with the data.
+The index is sorted by time, so the data is returned in the order it was recorded.
+
+We consider that our data directory is structured as follows:
+
+```
+data/tartan_kitti_1/
+    images/
+        000000.png
+        000001.png
+        ...
+        timestamps.txt
+    poses/
+        poses.npy
+        timestamps.txt
+    height_map/
+        000000.npy
+        000001.npy
+        ...
+        timestamps.txt
+```
+
+```python
+from src.dataset import TartanKittiDataset
+
+# Create the dataset
+dataset = TartanKittiDataset(
+    data_dir="data/tartan_kitti_1",
+    keys=["images", "poses", "height_map"],
+)
+```
+
+Creating the dataset will perform pre-processing on the data, such as loading some data to check the dimensions and the timestamps.
+By doing this, it will recreate the timeline of the data.
+This is an internal feature that is used to ensure that the data is in the correct order. It is presented here to show how the data is managed.
+
+```python
+for (key, idx) in dataset.timeline:
+    print(key, idx)
+>>> images 0
+>>> poses 0
+>>> poses 1
+>>> height_map 0
+...
+```
+The `timeline`attribute may need to be processed during the initialization for some datasets.
+
+
+That is how in the `TorchTKDataset` during preprocessing creates the timeline of the data.
+
+Then you can access the data by using the `__getitem__` method:
+
+```python
+# Get some data
+from src.dataset import TorchTKDataset
+dataset = TorchTKDataset(
+    data_dir="data/tartan_kitti_1",
+    keys=["images", "poses", "height_map"],
+)
+
+dataset[0]
+>>> {"key": "images", "data": ..., "timestamp": ...}
+
+dataset[1]
+>>> {"key": "poses", "data": ..., "timestamp": ...}
+
+dataset[2]
+>>> {"key": "poses", "data": ..., "timestamp": ...}
+
+dataset[3]
+>>> {"key": "height_map","data": ..., "timestamp": ...}
+```
+
+#### Sampler
+
+The `Sampler` is used to sample the data in the dataset. It means reuniting the data in the way you want to train your model.
+The `Sampler` is independent of the dataset and can be used with any dataset.
+Furthermore, the `Sampler` has to respect the timeline of the data.
+Some `Sampler` are already implemented in the `src/sampler` directory with simple functionalities.
+Such as :
+* LatestSyncSampler : Return the latest synchronized data.
+* LowFrequencySampler : Return the data sampled by stacking the data with their lower frequency.
+
+Those examples may not be enough for your model, so you can implement your own `Sampler` class.
+
+
+
+#### Trainer
+
+In the `trainers` directory, you will put your training scripts.
+Then execute the following command to run the training:
+
+```sh
+python3 -m trainers.my_trainer
+```
+
+### Configuration
+
+Configuration files are located in the `config/` directory. You can customize the training and dataset parameters by editing the YAML files.
+
+### Test
+
+To run the tests, use the following command in the root directory:
+
+```sh
+python3 -m unittest
+```
+
+## Data
+
+As mentioned before, the data is generally time-series data, meaning that the data is asynchronous and the time is not fixed (aperiodic).
+This brings some challenges to ensure that the user has control over the data and the time.
+
+### Dataset
+
+To ensure the data remains in the same conditions as reality, the `Dataset` class is designed to keep the data in the same order as it was recorded.
+
+So in its `Mapping` and `Iterable` form, `__getitem__` and `__iter__` will return the data in **time order**.
+
+### Sampler
+
+The sampler, such as the one in PyTorch, is used to sample the data by managing the indexes to avoid mismanagement of the data.
+
+But we take our situation into account, the data is time-dependent, so the `Sampler` works on the timeline to return the associated indexes. In this way, a sampler is independent of the dataset and can be used with any dataset.
+
+
+## Organization
+
+...
+
+### Architecture
+
+The project is organized as follows:
+
+- `trainers/`: Contains the training scripts.
+    Those scripts are used to train the models on the datasets.
+- `src/`: Contains the source code of the project.
+      - `core/`: Contains the core classes of the project. (Mostly abstract classes)
+      - `dataset/`: Contains the dataset classes.
+      - `loader/`: Contains the loader classes.
+      - `sampler/`: Contains the sampler classes.
+      - `utils/`: Contains utility functions and classes.
+- `config/`: Contains the configuration files. (Not sure to keep it)
+- `test/`: Contains the test files.
+
+### Design
+
+The idea is that the user will code their own `Trainer` script in the `trainers/` folder.
+If a tool is missing, the user can implement it in the `src/` folder except for the `core` folder which contains the abstract classes.
+
+This way we present already implemented tools that permit the user to start quickly creating their own model. And if it is not enough the user can:
+
+- change the data they are using, they can implement their own `Dataset` class with appropriate `Loader`.
+- change the way the data is sampled, they can implement their own `Sampler` class.
+
+And in future versions:
+
+- Use and create transformation `Node` in the same philosophy as [kedro](https://kedro.org/).
+
+### Notes
+
+In a future version, the unit tests folder will be in the `src/` folder to test the classes.

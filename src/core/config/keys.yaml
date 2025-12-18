@@ -1,0 +1,80 @@
+# Contains the general key names for the data and their fields
+# The fields come from ros messages
+# NOT FINISHED
+
+fields:
+  linear_acceleration:
+    type: float64
+    keys: ['x', 'y', 'z']
+  angular_velocity:
+    type: float64
+    keys: ['x', 'y', 'z']
+  orientation:
+    type: float64
+    keys: ['x', 'y', 'z', 'w']
+  latitute:
+    type: float64
+  longitude:
+    type: float64
+  altitude:
+    type: float64
+  height:
+    type: uint32
+  width:
+    type: uint32
+  image:
+    data:
+      type: uint8[] | uint8
+  point_cloud:
+    points:
+      type: float32[]
+      keys: ['x', 'y', 'z']
+    ChannelFloat32:
+      type: float32[]
+
+# sensor_msgs/Imu
+imu:
+  fields: 
+    - linear_acceleration
+    - angular_velocity
+    - orientation
+
+# sensor_msgs/Image
+image_rgb:
+  parameters:
+    - height
+    - width
+  fields: 
+    - image
+
+# sensor_msgs/PointCloud
+lidar:
+  fields:
+    - point_cloud
+
+# geometry_msgs/Pose
+pose:
+  fields:
+    - position
+    - orientation
+
+# geometry_msgs/Twist
+twist:
+  fields:
+    - linear
+    - angular
+
+# nav_msgs/Odometry
+odom:
+  fields:
+    - pose
+    - twist
+
+# sensor_msgs/NavSatFix
+gps:
+  fields:
+    - latitude
+    - longitude
+    - altitude
+
+  
