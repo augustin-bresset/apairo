@@ -3,4 +3,10 @@ matplotlib
 opencv-python
 torch
 torchvision
+PyYAML
 
+[dev]
+pytest
+black
+isort
+flake8

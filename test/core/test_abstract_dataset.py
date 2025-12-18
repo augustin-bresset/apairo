@@ -1,34 +1,36 @@
-import unittest
+
+import pytest
 from test.utils.create_mock_dataset import create_mock_dataset
+from src.core.utils.exceptions import KeysEmptyWarning, KeysDuplicateWarning
 
+@pytest.fixture
+def dataset():
+    return create_mock_dataset()
 
-class TestAbstractDataset(unittest.TestCase):
-    def setUp(self):
-        self.dataset = create_mock_dataset()
-
-    def test_keys_setter(self):
-        self.assertEqual(self.dataset.keys, ["key"])
-        with self.assertRaises(Exception):
-            self.dataset.keys = []
-        with self.assertRaises(Exception):
-            self.dataset.keys = ["key_a", "key_a"]
-        self.dataset.keys = ["key_a", "key_b"]
-        self.assertEqual(self.dataset.keys, ["key_a", "key_b"])
-        self.dataset.keys = ["key"]
-
-    def test_load(self):
-        self.assertEqual(self.dataset.load("key", 0), "value")
-
-    def test_len(self):
-        self.assertEqual(len(self.dataset), 1)
-
-    def test_shape(self):
-        self.assertEqual(self.dataset.shape, (1,))
-
-    def test_iter(self):
-        self.assertEqual(next(iter(self.dataset)), {"key": ["value"]})
-
+def test_keys_setter(dataset):
+    assert dataset.keys == ["key"]
     
+    with pytest.raises(KeysEmptyWarning): # Assuming Exception type from logic
+        dataset.keys = []
+        
+    with pytest.raises(KeysDuplicateWarning): # Assuming Exception type
+        dataset.keys = ["key_a", "key_a"]
+        
+    dataset.keys = ["key_a", "key_b"]
+    assert dataset.keys == ["key_a", "key_b"]
+    
+    dataset.keys = ["key"]
 
-if __name__ == '__main__':
-    unittest.main()
+def test_load(dataset):
+    assert dataset.load("key", 0) == "value"
+
+def test_len(dataset):
+    assert len(dataset) == 1
+
+def test_shape(dataset):
+    assert dataset.shape == (1,)
+
+def test_iter(dataset):
+    # Depending on implementation, iter might return a dict or tuple
+    # Original test expected {"key": ["value"]}
+    assert next(iter(dataset)) == {"key": ["value"]}

@@ -14,7 +14,7 @@ setup(
     description='Extemsible Framework to manage data',
     author='Augustin Bresset',
     author_email='augustin.bresset@gmail.com',
-    packages=['src',],
+    # packages=['src',],
     license='MIT',
     packages=find_packages(where="src"),
     package_dir={'': 'src'},

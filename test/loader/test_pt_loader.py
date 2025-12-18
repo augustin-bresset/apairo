@@ -1,54 +1,62 @@
-import unittest
+
+import pytest
 import os
 from src.loader import PTLoader
 from src.core.utils.exceptions import EmptyLoaderWarning
-
-from test.paths import tmp_path
 from test.utils import create_random_pt_file
 
-class TestPTLoader(unittest.TestCase):
-    file_name = "test.pt"
+# Fixture to setup and teardown is handled implicitly by pytest tmp_path
+@pytest.fixture
+def pt_loader(tmp_path):
     dir_name = "pt_loader_test"
-
+    file_name = "test.pt"
     
-    def setUp(self) -> None:
-        self.keys = ["data_a", "data_b"]
-        self.len_ = 10
-        self.data_shape = [(7), (3, 3)]
-        self.shapes = {key: self.data_shape[i] for i,key in enumerate(self.keys)}
-        create_random_pt_file(self.keys, self.len_, self.data_shape, self.file_name, self.dir_name)
-        self.loader = PTLoader(os.path.join(tmp_path, self.dir_name, self.file_name))
+    directory = tmp_path / dir_name
+    directory.mkdir()
+    file_path = directory / file_name
+    
+    keys = ["data_a", "data_b"]
+    len_ = 10
+    data_shape = [(7), (3, 3)]
+    shapes = {key: data_shape[i] for i, key in enumerate(keys)}
+    
+    create_random_pt_file(keys, len_, data_shape, file_name, str(directory))
+    
+    loader = PTLoader(str(file_path))
+    
+    return loader, keys, len_, shapes, str(file_path)
 
-    def test_len(self):
-        self.assertEqual(len(self.loader), self.len_)
+def test_len(pt_loader):
+    loader, keys, len_, shapes, _ = pt_loader
+    assert len(loader) == len_
 
-    def test_getitem(self):
-        self.assertIsNotNone(self.loader[0])
+def test_getitem(pt_loader):
+    loader, _, _, _, _ = pt_loader
+    assert loader[0] is not None
 
-    def test_shape(self):
-        for key in self.loader.data.keys():
-            if key == "dt": continue
-            if isinstance(self.shapes[key], int):
-                self.assertEqual(int(self.loader.shape[key][0]), self.shapes[key])
-            else:
-                self.assertTupleEqual(tuple(self.loader.shape[key]), tuple(self.shapes[key]))
+def test_shape(pt_loader):
+    loader, keys, len_, shapes, _ = pt_loader
+    for key in loader.data.keys():
+        if key == "dt": continue
+        if isinstance(shapes[key], int):
+             assert int(loader.shape[key][0]) == shapes[key]
+        else:
+             assert tuple(loader.shape[key]) == tuple(shapes[key])
 
-    def test_set_keys(self):
-        self.loader.set_keys(["data_a"])
-        self.assertEqual(self.loader.data.keys(), {"data_a", "dt"})
-        
-        self.assertRaises(EmptyLoaderWarning, self.loader.set_keys, ["data_c"])
-        self.loader = PTLoader(os.path.join(tmp_path, self.dir_name, self.file_name))
+def test_set_keys(pt_loader):
+    loader, keys, _, _, file_path_str = pt_loader
+    loader.set_keys(["data_a"])
+    assert loader.data.keys() == {"data_a", "dt"}
+    
+    # Re-initialize to test warning/exception
+    loader = PTLoader(file_path_str)
+    # Pytest way to check for warnings/exceptions
+    # The original test checked for EmptyLoaderWarning
+    with pytest.raises(EmptyLoaderWarning):
+        loader.set_keys(["data_c"])
 
-    def test_reset(self):
-        
-        self.loader.set_keys(["data_a"])
-        self.loader.reset()
-        self.assertEqual(self.loader.data.keys(), {"data_a", "data_b", "dt"})
-
-    def tearDown(self):
-        os.remove(os.path.join(tmp_path, self.dir_name, self.file_name))
-        os.rmdir(os.path.join(tmp_path, self.dir_name))
-
-if __name__ == "__main__":
-    unittest.main()
+def test_reset(pt_loader):
+    loader, keys, _, _, _ = pt_loader
+    loader.set_keys(["data_a"])
+    loader.reset()
+    assert loader.data.keys() == {"data_a", "data_b", "dt"}

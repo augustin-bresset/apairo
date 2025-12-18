@@ -1,31 +1,30 @@
-import os
-import unittest
+
+import pytest
 import numpy as np
-
+import os
 from src.loader import NPYLoader
-
-from test.paths import tmp_path
 from test.utils import create_npy_file
 
-class TestNPYLoader(unittest.TestCase):
-    def setUp(self):
-        self.data = np.array([1, 2, 3, 4, 5])
-        create_npy_file(self.data, filename="data.npy", directory="npy_loader_test")
-        self.loader = NPYLoader(os.path.join(tmp_path, "npy_loader_test"))
+@pytest.fixture
+def npy_loader_data(tmp_path):
+    data = np.array([1, 2, 3, 4, 5])
+    directory = tmp_path / "npy_loader_test"
+    directory.mkdir()
+    create_npy_file(data, filename="data.npy", directory=str(directory))
+    return data, directory
 
-    def test_len(self):
-        self.assertEqual(self.loader.array.shape, self.data.shape)
+def test_len(npy_loader_data):
+    data, directory = npy_loader_data
+    loader = NPYLoader(str(directory))
+    assert loader.array.shape == data.shape
 
-    def test_getitem(self):
-        for i in range(len(self.loader)):
-            self.assertTrue(np.allclose(self.loader[i], self.data[i]))
+def test_getitem(npy_loader_data):
+    data, directory = npy_loader_data
+    loader = NPYLoader(str(directory))
+    for i in range(len(loader)):
+        assert np.allclose(loader[i], data[i])
 
-    def test_shape(self):
-        self.assertEqual(self.loader.shape, (1))
-
-    def tearDown(self):
-        os.remove(os.path.join(tmp_path, "npy_loader_test", "data.npy"))
-        os.rmdir(os.path.join(tmp_path, "npy_loader_test"))
-
-if __name__ == "__main__":
-    unittest.main()
+def test_shape(npy_loader_data):
+    data, directory = npy_loader_data
+    loader = NPYLoader(str(directory))
+    assert loader.shape == (1,) # Tuple comparison

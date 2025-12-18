@@ -31,7 +31,7 @@ def npy_loader(npy_file):
     return _npy_loader
 
 @pytest.fixture
-def npys_loader():
+def npys_loader(npy_file):
     
     def _npys_loader(shape, directory, file_spec=""):
         dim = shape[0]
