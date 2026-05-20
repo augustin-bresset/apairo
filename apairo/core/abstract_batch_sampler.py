@@ -13,9 +13,9 @@ class AbstractBatchSampler(BatchSampler):
     """
 
     def __init__(self, sampler: AbstractSampler, drop_last: bool = False):
-        super().__init__(sampler, sampler.batch_size, drop_last)
+        super().__init__(sampler, sampler.sample_size, drop_last)
         self.sampler = sampler
 
     def __iter__(self):
         for batch in super().__iter__():
-            yield self.sampler.get_batch(batch)
+            yield self.sampler.get_sample(batch[0])

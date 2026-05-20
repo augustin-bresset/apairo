@@ -36,7 +36,8 @@ class LowFreqUniformSampler(AbstractSampler):
         if index >= len(self):
             raise IndexError("Index out of range")
         return {
-            {key: [self.sample_last_indexes[key][index] + i for i in range(self.sample_sizes[key])]} for key in self.keys
+            key: [self.sample_last_indexes[key][index] + i for i in range(self.sample_sizes[key])]
+            for key in self.keys
         }
 
     def __len__(self):
