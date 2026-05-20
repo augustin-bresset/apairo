@@ -1,7 +1,7 @@
 from typing import overload, Dict, List, Tuple
 from torch.utils.data import Dataset, IterableDataset
 
-from .tartan_kitti import TartanKittiDataset
+from .kitti import KittiDataset as TartanKittiDataset
 from .tartan_pt import TartanPT
 
 
