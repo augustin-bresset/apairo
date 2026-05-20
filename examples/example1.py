@@ -7,9 +7,9 @@ from torch.utils.data import BatchSampler, SequentialSampler
 import torchvision
 
 
-from src.dataset import TorchTKDataset
-from src.sampler import LowFreqUniformSampler
-from src.utils.timestamps import get_frequency
+from apairo.dataset import TorchTKDataset
+from apairo.sampler import LowFreqUniformSampler
+from apairo.utils.timestamps import get_frequency
 
 """
 In this example we will create a pipeline that will take command and odometry value

@@ -7,4 +7,4 @@ data
 
 .env
 .venv
-.claude/
+.claude/build/

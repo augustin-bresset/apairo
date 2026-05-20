@@ -2,8 +2,8 @@ import os
 import torch
 import torch.nn as nn
 from torch.utils.data.dataset import ConcatDataset
-from src.dataset.torch_wrapper import TorchTKDataset
-from src.sampler.low_freq_uniform_sampler import LowFreqUniformSampler
+from apairo.dataset.torch_wrapper import TorchTKDataset
+from apairo.sampler.low_freq_uniform_sampler import LowFreqUniformSampler
 
 class Model(nn.Module):
     """ Model

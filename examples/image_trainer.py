@@ -6,8 +6,8 @@ from torch import nn
 from torch.utils.data import BatchSampler, SequentialSampler
 import torchvision
 from matplotlib import pyplot as plt
-from src.dataset import TorchTKDataset
-from src.sampler import LowFreqUniformSampler
+from apairo.dataset import TorchTKDataset
+from apairo.sampler import LowFreqUniformSampler
 
 from .utils.image import plt_image, plt_image_scaled, sub_rect_image, sub_centered_low_image
 import cv2
