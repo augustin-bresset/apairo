@@ -1,29 +1,21 @@
-from typing import Tuple, Union
+from pathlib import Path
+from typing import Tuple
 import numpy as np
 import torch
-import os
 
 from ..core import AbstractLoader
 from ..core.utils.exceptions import FileExtensionError
 
 
 class NPYLoader(AbstractLoader):
-    r"""A :class:`Loader` for directory that contains one `npy` file.
+    r"""Loader for a directory containing a single `.npy` file."""
 
-    Args:
-        directory (str) :
-            The directory that contains the `npy` file.
-    """
-    array: Union[np.ndarray, torch.Tensor] = np.zeros(0)
-
-    def __init__(self, directory: str) -> None:
-        for f in os.listdir(directory):
-            if f.split(".")[-1] == "npy":
-                self.array = np.load(os.path.join(directory, f))
-                break
-        if self.array is None:
-            raise FileExtensionError(f"There is no numpy file in {directory}")
-        self.array = torch.from_numpy(self.array)
+    def __init__(self, directory: str | Path) -> None:
+        directory = Path(directory)
+        npy_files = list(directory.glob("*.npy"))
+        if not npy_files:
+            raise FileExtensionError(f"No .npy file found in {directory}")
+        self.array: torch.Tensor = torch.from_numpy(np.load(npy_files[0]))
 
     def __len__(self) -> int:
         return len(self.array)
@@ -35,4 +27,4 @@ class NPYLoader(AbstractLoader):
     def shape(self) -> Tuple[int, ...]:
         if self.array.ndim == 1:
             return (1,)
-        return self.array.shape[1:]
+        return tuple(self.array.shape[1:])

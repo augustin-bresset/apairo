@@ -2,7 +2,6 @@ import os
 from typing import List, Dict
 import numpy as np
 import torch
-import cv2
 from test.paths import tmp_path
 
 
@@ -125,6 +124,8 @@ def create_random_npy_files(n_files, shape, directory="", file_spec="", overwrit
 
 
 def create_random_images(n_images, shape, directory="", overwrite=False):
+    import cv2
+
     if tmp_path not in directory:
         directory = os.path.join(tmp_path, directory)
 

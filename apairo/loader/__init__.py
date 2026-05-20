@@ -2,6 +2,7 @@ from .img_loader import IMGLoader
 from .npy_loader import NPYLoader
 from .npys_loader import NPYSLoader
 from .pt_loader import PTLoader
+from .bin_loader import BINLoader
 import os
 import numpy as np
 import yaml
@@ -12,7 +13,8 @@ str_to_loader = {
     "img": IMGLoader,
     "npys": NPYSLoader,
     "npy": NPYLoader,
-    "npys_img": NPYSLoader  # For the moment, we will use npys by default
+    "npys_img": NPYSLoader,  # For the moment, we will use npys by default
+    "bin": BINLoader,
 }
 
 # Loader is a abstract class : not public
@@ -22,6 +24,7 @@ __all__ = [
     "NPYLoader",
     "NPYSLoader",
     "PTLoader",
+    "BINLoader",
     "str_to_loader",
     "loads_timestamps",
     "load_profile"
