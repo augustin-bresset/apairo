@@ -1,7 +1,7 @@
 
 import pytest
 from test.utils.create_mock_dataset import create_mock_dataset
-from src.core.utils.exceptions import KeysEmptyWarning, KeysDuplicateWarning
+from apairo.core.utils.exceptions import KeysEmptyWarning, KeysDuplicateWarning
 
 
 @pytest.fixture

@@ -2,9 +2,9 @@ from typing import List, Dict, Tuple, Sequence
 import numpy as np
 import torch
 
-from src.utils.timestamps import get_end_of_time
-from src.loader import str_to_loader, loads_timestamps, load_profile
-from src.utils.files import get_files
+from apairo.utils.timestamps import get_end_of_time
+from apairo.loader import str_to_loader, loads_timestamps, load_profile
+from apairo.utils.files import get_files
 from ..core import AbstractDataset, AbstractLoader
 
 _Key = str

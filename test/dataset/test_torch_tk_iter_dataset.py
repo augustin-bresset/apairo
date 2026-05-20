@@ -2,7 +2,7 @@
 
 import pytest
 import numpy as np
-from src.dataset.torch_wrapper import TorchTKIterDataset
+from apairo.dataset.torch_wrapper import TorchTKIterDataset
 # Assuming fixtures for paths or mock logic
 # from test.paths import tartan2kitti_path # Mock or use fixture
 
@@ -83,7 +83,7 @@ def test_init_timeline():
 # I will import it. If it fails, the user will see.
 
 
-# from src.loader import NPYLoader, NPYSLoader, IMGLoader
+# from apairo.loader import NPYLoader, NPYSLoader, IMGLoader
 # from test.paths import tartan2kitti_path # Original import
 
 

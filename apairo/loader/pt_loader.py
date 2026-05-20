@@ -3,7 +3,7 @@ import torch
 from typing import Dict, Collection
 import numpy as np
 
-from src.utils import dict_flatten
+from apairo.utils import dict_flatten
 from ..core import AbstractLoader
 from ..core.utils.exceptions import FileExtensionError, EmptyLoaderWarning
 

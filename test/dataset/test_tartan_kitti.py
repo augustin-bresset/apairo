@@ -3,8 +3,8 @@
 import pytest
 import os
 import numpy as np
-from src.dataset.tartan_kitti import TartanKittiDataset
-from src.loader import NPYLoader
+from apairo.dataset.tartan_kitti import TartanKittiDataset
+from apairo.loader import NPYLoader
 
 # Assuming these utilities are available or will be refactored into fixtures
 from test.utils import (

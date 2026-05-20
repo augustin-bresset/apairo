@@ -1,9 +1,9 @@
 from typing import Dict
 import numpy as np
 
-from src.utils.types import Timestamp
-from src.utils.timestamps import get_indexes, get_reference_timestamps
-from src.core import AbstractSampler
+from apairo.utils.types import Timestamp
+from apairo.utils.timestamps import get_indexes, get_reference_timestamps
+from apairo.core import AbstractSampler
 
 
 class LowFreqUniformSampler(AbstractSampler):

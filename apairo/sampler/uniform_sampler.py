@@ -1,5 +1,5 @@
 from ..core.abstract_sampler import AbstractSampler
-from src.utils.timestamps import get_indexes, get_reference_timestamps
+from apairo.utils.timestamps import get_indexes, get_reference_timestamps
 
 
 class LowFreqUniformSampler(AbstractSampler):

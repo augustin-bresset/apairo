@@ -1,7 +1,7 @@
 import pytest
 import torch
 import numpy as np
-from src.loader.npys_loader import NPYSLoader
+from apairo.loader.npys_loader import NPYSLoader
 from test.utils import create_random_npy_files
 
 

@@ -1,6 +1,6 @@
 import numpy as np
 from typing import List
-from src.core import AbstractDataset
+from apairo.core import AbstractDataset
 
 
 class ConcatDataset(AbstractDataset):

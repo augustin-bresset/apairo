@@ -1,6 +1,6 @@
 
 from typing import Sequence
-from src.loader import PTLoader
+from apairo.loader import PTLoader
 from ..core import AbstractDataset
 
 

@@ -1,6 +1,6 @@
 import pytest
 import numpy as np
-from src.sampler.low_freq_uniform_sampler import LowFreqUniformSampler
+from apairo.sampler.low_freq_uniform_sampler import LowFreqUniformSampler
 
 
 @pytest.fixture

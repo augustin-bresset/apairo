@@ -1,6 +1,6 @@
 import pytest
 import numpy as np
-from src.utils.utils import dict_flatten, npy_analyser
+from apairo.utils.utils import dict_flatten, npy_analyser
 # Assuming paths is available or we mock it
 # from test.paths import shutil
 

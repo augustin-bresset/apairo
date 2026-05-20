@@ -3,7 +3,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import torch
 
-from src.loader import (
+from apairo.loader import (
     NPYLoader,
     NPYSLoader,
     IMGLoader,

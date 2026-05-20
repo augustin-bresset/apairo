@@ -3,7 +3,7 @@ from typing import Sequence, SupportsFloat, Union
 
 
 from torch.utils.data import Sampler
-from src.utils.types import Timestamp
+from apairo.utils.types import Timestamp
 
 
 class AbstractSampler(Sampler, ABC):

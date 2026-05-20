@@ -2,7 +2,7 @@ import os
 import numpy as np
 import torch
 
-from src.utils import npy_analyser
+from apairo.utils import npy_analyser
 from ..core import AbstractLoader
 
 

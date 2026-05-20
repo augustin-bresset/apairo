@@ -1,7 +1,7 @@
 import pytest
 import numpy as np
 from torchvision.io import read_image
-from src.loader import IMGLoader
+from apairo.loader import IMGLoader
 from test.utils import create_random_images
 
 

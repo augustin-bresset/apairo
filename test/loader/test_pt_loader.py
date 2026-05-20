@@ -1,7 +1,7 @@
 
 import pytest
-from src.loader import PTLoader
-from src.core.utils.exceptions import EmptyLoaderWarning
+from apairo.loader import PTLoader
+from apairo.core.utils.exceptions import EmptyLoaderWarning
 from test.utils import create_random_pt_file
 
 # Fixture to setup and teardown is handled implicitly by pytest tmp_path

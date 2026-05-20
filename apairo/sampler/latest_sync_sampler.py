@@ -1,8 +1,8 @@
 from typing import Dict
 import numpy as np
 
-from src.utils.types import Timestamp
-from src.utils.timestamps import get_reference_timestamps
+from apairo.utils.types import Timestamp
+from apairo.utils.timestamps import get_reference_timestamps
 from ..core import AbstractSampler
 
 

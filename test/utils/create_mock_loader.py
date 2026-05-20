@@ -1,5 +1,5 @@
 
-from src.core import AbstractLoader
+from apairo.core import AbstractLoader
 
 
 class MockLoader(AbstractLoader):

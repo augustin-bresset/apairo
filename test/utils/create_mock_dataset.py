@@ -1,5 +1,5 @@
 
-from src.core import AbstractDataset
+from apairo.core import AbstractDataset
 
 
 class MockDataset(AbstractDataset):

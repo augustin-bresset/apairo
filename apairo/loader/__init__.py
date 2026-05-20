@@ -5,7 +5,7 @@ from .pt_loader import PTLoader
 import os
 import numpy as np
 import yaml
-from src.utils.paths import dataset_profile_directory_path
+from apairo.utils.paths import dataset_profile_directory_path
 
 
 str_to_loader = {
