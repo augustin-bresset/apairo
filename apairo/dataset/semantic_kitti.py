@@ -18,7 +18,9 @@ class SemanticKittiDataset(SynchronousDataset):
         keys: Modalities to load — any subset of ``{"lidar", "labels"}``.
     """
 
-    def __init__(self, root_dir: str | Path, keys: list[str] = ["lidar", "labels"]) -> None:
+    def __init__(self, root_dir: str | Path, keys: list[str] | None = None) -> None:
+        if keys is None:
+            keys = ["lidar", "labels"]
         root = Path(root_dir)
         invalid = set(keys) - _AVAILABLE_KEYS
         if invalid:

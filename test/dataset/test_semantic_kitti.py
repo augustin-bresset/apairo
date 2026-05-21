@@ -106,3 +106,17 @@ def test_label_lower_16_bits(kitti_root):
     s = ds[0]
     assert s.data["labels"][0].item() == 0x0001
     assert s.data["labels"][1].item() == 0x0002
+
+
+def test_mismatched_file_counts(tmp_path):
+    """Init must fail if lidar and labels file counts differ."""
+    vel = tmp_path / "sequences" / "00" / "velodyne"
+    lbl = tmp_path / "sequences" / "00" / "labels"
+    vel.mkdir(parents=True)
+    lbl.mkdir(parents=True)
+    np.random.rand(50, 4).astype(np.float32).tofile(vel / "000000.bin")
+    np.random.rand(50, 4).astype(np.float32).tofile(vel / "000001.bin")
+    np.random.randint(0, 20, 50, dtype=np.int32).tofile(lbl / "000000.label")
+    # only one label file vs two lidar files
+    with pytest.raises(ValueError):
+        SemanticKittiDataset(tmp_path, keys=["lidar", "labels"])
