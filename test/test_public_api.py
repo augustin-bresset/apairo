@@ -14,6 +14,9 @@ def test_public_names():
         "split_sequences",
         "LowFreqUniformSampler",
         "LatestSyncSampler",
+        "SemanticKittiDataset",
+        "Rellis3DDataset",
+        "Goose3DDataset",
     ]
     for name in expected:
         assert hasattr(apairo, name), f"apairo.{name} not found"

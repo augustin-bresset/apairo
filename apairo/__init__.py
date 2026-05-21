@@ -8,6 +8,9 @@ from apairo.dataset.tartan_pt import TartanPT as TartanDataset
 from apairo.dataset.concat import ConcatDataset, TorchConcatDataset
 from apairo.dataset.torch_wrappers import TorchKittiDataset, TorchKittiIterDataset
 from apairo.dataset import split_sequences
+from apairo.dataset.semantic_kitti import SemanticKittiDataset
+from apairo.dataset.rellis import Rellis3DDataset
+from apairo.dataset.goose import Goose3DDataset
 
 from apairo.sampler.low_freq_uniform_sampler import LowFreqUniformSampler
 from apairo.sampler.latest_sync_sampler import LatestSyncSampler
@@ -26,5 +29,8 @@ __all__ = [
     "split_sequences",
     "LowFreqUniformSampler",
     "LatestSyncSampler",
+    "SemanticKittiDataset",
+    "Rellis3DDataset",
+    "Goose3DDataset",
     "__version__",
 ]

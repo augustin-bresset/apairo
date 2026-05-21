@@ -3,6 +3,9 @@ TartanKittiDataset = KittiDataset  # backward-compat alias
 from .tartan_pt import TartanPT
 from .torch_wrappers import TorchKittiDataset, TorchKittiIterDataset, TorchTartanPTDataset
 from .concat import ConcatDataset, TorchConcatDataset
+from .semantic_kitti import SemanticKittiDataset
+from .rellis import Rellis3DDataset
+from .goose import Goose3DDataset
 # backward-compat aliases
 TorchTKDataset = TorchKittiDataset
 TorchTKIterDataset = TorchKittiIterDataset
@@ -41,4 +44,7 @@ __all__ = [
     "ConcatDataset",
     "TorchConcatDataset",
     "split_sequences",
+    "SemanticKittiDataset",
+    "Rellis3DDataset",
+    "Goose3DDataset",
 ]
