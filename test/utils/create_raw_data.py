@@ -124,7 +124,7 @@ def create_random_npy_files(n_files, shape, directory="", file_spec="", overwrit
 
 
 def create_random_images(n_images, shape, directory="", overwrite=False):
-    import cv2
+    from PIL import Image
 
     if tmp_path not in directory:
         directory = os.path.join(tmp_path, directory)
@@ -135,4 +135,4 @@ def create_random_images(n_images, shape, directory="", overwrite=False):
     for i in range(n_images):
         image = np.random.randint(0, 255, (*shape, 3), dtype=np.uint8)
         file_path = os.path.join(directory, f"{i:06d}.png")
-        cv2.imwrite(file_path, image)
+        Image.fromarray(image, "RGB").save(file_path)
