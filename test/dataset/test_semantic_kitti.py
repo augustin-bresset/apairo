@@ -1,0 +1,108 @@
+import pytest
+import numpy as np
+import torch
+from pathlib import Path
+
+from apairo.dataset.semantic_kitti import SemanticKittiDataset
+from apairo.core.sample import Sample
+
+N_POINTS = 50
+
+
+def _make_bin(path: Path, n: int = N_POINTS):
+    np.random.rand(n, 4).astype(np.float32).tofile(path)
+
+
+def _make_label(path: Path, n: int = N_POINTS):
+    np.random.randint(0, 20, n, dtype=np.int32).tofile(path)
+
+
+@pytest.fixture
+def kitti_root(tmp_path):
+    n_frames = 4
+    for seq in ["00", "01"]:
+        vel = tmp_path / "sequences" / seq / "velodyne"
+        lbl = tmp_path / "sequences" / seq / "labels"
+        vel.mkdir(parents=True)
+        lbl.mkdir(parents=True)
+        for i in range(n_frames):
+            _make_bin(vel / f"{i:06d}.bin")
+            _make_label(lbl / f"{i:06d}.label")
+    return tmp_path, n_frames * 2  # 2 sequences × n_frames
+
+
+def test_len(kitti_root):
+    root, total = kitti_root
+    ds = SemanticKittiDataset(root, keys=["lidar", "labels"])
+    assert len(ds) == total
+
+
+def test_getitem_returns_sample(kitti_root):
+    root, _ = kitti_root
+    ds = SemanticKittiDataset(root, keys=["lidar", "labels"])
+    s = ds[0]
+    assert isinstance(s, Sample)
+    assert s.timestamp is None
+    assert s.data["lidar"].shape == (N_POINTS, 4)
+    assert s.data["labels"].shape == (N_POINTS,)
+    assert s.data["lidar"].dtype == torch.float32
+    assert s.data["labels"].dtype == torch.int64
+
+
+def test_iter(kitti_root):
+    root, total = kitti_root
+    ds = SemanticKittiDataset(root, keys=["lidar", "labels"])
+    assert len(list(ds)) == total
+
+
+def test_next(kitti_root):
+    root, total = kitti_root
+    ds = SemanticKittiDataset(root, keys=["lidar"])
+    it = iter(ds)
+    s = next(it)
+    assert isinstance(s, Sample)
+
+
+def test_keys_subset(kitti_root):
+    root, _ = kitti_root
+    ds = SemanticKittiDataset(root, keys=["lidar"])
+    s = ds[0]
+    assert "lidar" in s.data
+    assert "labels" not in s.data
+
+
+def test_invalid_key(kitti_root):
+    root, _ = kitti_root
+    with pytest.raises(KeyError):
+        SemanticKittiDataset(root, keys=["nonexistent"])
+
+
+def test_out_of_range(kitti_root):
+    root, total = kitti_root
+    ds = SemanticKittiDataset(root, keys=["lidar"])
+    with pytest.raises(IndexError):
+        ds[total]
+
+
+def test_is_synchronous(kitti_root):
+    root, _ = kitti_root
+    ds = SemanticKittiDataset(root, keys=["lidar"])
+    assert ds.timestamps is None
+    assert ds.is_synchronous is True
+
+
+def test_label_lower_16_bits(kitti_root):
+    """SemanticKITTI labels encode instance in upper bits — only lower 16 bits are semantic."""
+    root, _ = kitti_root
+    # Write a label file where upper bits are set
+    path = sorted((root / "sequences" / "00" / "labels").glob("*.label"))[0]
+    labels_with_instance = np.array([0x00010001, 0x00020002], dtype=np.int32)
+    labels_with_instance.tofile(path)
+    # Also rewrite the matching bin file with correct point count
+    bin_path = sorted((root / "sequences" / "00" / "velodyne").glob("*.bin"))[0]
+    np.random.rand(2, 4).astype(np.float32).tofile(bin_path)
+
+    ds = SemanticKittiDataset(root, keys=["labels"])
+    s = ds[0]
+    assert s.data["labels"][0].item() == 0x0001
+    assert s.data["labels"][1].item() == 0x0002
