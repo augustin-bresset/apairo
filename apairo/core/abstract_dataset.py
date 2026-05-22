@@ -1,13 +1,23 @@
 from abc import ABC, abstractmethod
-from typing import Any, Dict, List, Optional, Sequence, Union, overload
+from typing import (
+    Any,
+    ClassVar,
+    Dict,
+    FrozenSet,
+    List,
+    Optional,
+    Sequence,
+    Union,
+    overload,
+)
 from . import abstract_loader
 
-from .utils.typing import Timestamp, _Key
+from .utils.typing import _Key
 from .utils.exceptions import KeysEmptyWarning, KeysDuplicateWarning
 
 
 class AbstractDataset(ABC):
-    r""" :class:`AbstractDataset` is an abstract class for dataset from robots data.
+    r""":class:`AbstractDataset` is an abstract class for dataset from robots data.
 
     Each dataset that will be used will have a corresponding class that will inherit from this class.
 
@@ -40,6 +50,9 @@ class AbstractDataset(ABC):
 
     """
 
+    available_keys: ClassVar[FrozenSet[str]] = frozenset()
+    """Channels this dataset type can provide.  Override in each concrete class."""
+
     keys: Union[List[_Key], Sequence[_Key]]
     timestamps: dict | None
     loaders: Dict[_Key, abstract_loader.AbstractLoader]
@@ -64,37 +77,30 @@ class AbstractDataset(ABC):
     @property
     def is_synchronous(self) -> bool:
         """True if this dataset has no timestamps (synchronous frame access)."""
-        return getattr(self, 'timestamps', None) is None
+        return getattr(self, "timestamps", None) is None
 
     @abstractmethod
-    def __iter__(self):
-        ...
+    def __iter__(self): ...
 
     @abstractmethod
-    def __next__(self):
-        ...
+    def __next__(self): ...
 
     def load(self, key: str, idx: int):
         return self.loaders[key][idx]
 
     @overload
-    def __getitem__(self, idx: int) -> Any:
-        ...
+    def __getitem__(self, idx: int) -> Any: ...
 
     @overload
-    def __getitem__(self, idx: Dict[str, Sequence[int]]) -> Dict[str, Any]:
-        ...
+    def __getitem__(self, idx: Dict[str, Sequence[int]]) -> Dict[str, Any]: ...
 
     @overload
-    def __getitem__(self, idx: int) -> Any:
-        ...
+    def __getitem__(self, idx: int) -> Any: ...
 
     @abstractmethod
     def __getitem__(
         self,
         idx: Union[int, Dict[str, Sequence[int]]],
-    ) -> Union[Any, Dict[str, Any]]:
-        ...
+    ) -> Union[Any, Dict[str, Any]]: ...
 
-    def __len__(self) -> int:
-        ...
+    def __len__(self) -> int: ...

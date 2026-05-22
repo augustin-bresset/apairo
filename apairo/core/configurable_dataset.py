@@ -3,7 +3,12 @@ from abc import abstractmethod
 from pathlib import Path
 from typing import Optional
 
-from apairo.core.config import register_channel as _register_channel, read_config, write_config, CONFIG_FILENAME
+from apairo.core.config import (
+    register_channel as _register_channel,
+    read_config,
+    write_config,
+    CONFIG_FILENAME,
+)
 from apairo.core.preprocessor import Preprocessor
 
 
@@ -52,7 +57,9 @@ class ConfigurableDataset:
             sources: Provenance — channels this channel was derived from.
         """
         _register_channel(
-            sequence_dir, key, loader,
+            sequence_dir,
+            key,
+            loader,
             timestamps_from=timestamps_from,
             sources=sources,
         )
@@ -98,7 +105,77 @@ class ConfigurableDataset:
             TartanKittiDataset.run_preprocess(MyPreprocessor(), seq_dir)
         """
         from apairo.preprocess.runner import run
+
         run(preprocessor, cls, sequence_dir, overwrite=overwrite)
+
+    @classmethod
+    def describe(cls, sequence_dir: str | Path) -> dict:
+        """Describe what is available in a sequence directory.
+
+        Reads ``.apairo`` (creating it if absent) and cross-references it with
+        the class's :attr:`available_keys` to produce a three-way breakdown:
+
+        - **raw / present** — raw channels on disk and registered
+        - **raw / missing** — raw channels known from the profile but not on disk
+        - **preprocess** — channels produced by a preprocessing pipeline
+
+        Returns the breakdown as a dict and prints a human-readable summary.
+
+        Example::
+
+            TartanKittiDataset.describe("/data/tartan/2024-01-01_forest")
+        """
+        sequence_dir = Path(sequence_dir)
+        config_path = sequence_dir / CONFIG_FILENAME
+        config = (
+            read_config(sequence_dir)
+            if config_path.exists()
+            else cls(sequence_dir)._load_or_create_config(sequence_dir)
+        )
+        channels = config.get("channels", {})
+
+        raw_present = sorted(
+            k for k, v in channels.items() if v.get("kind", "raw") == "raw"
+        )
+        preprocess = {
+            k: v for k, v in channels.items() if v.get("kind") == "preprocess"
+        }
+        raw_missing = sorted(
+            k for k in getattr(cls, "available_keys", frozenset()) if k not in channels
+        )
+
+        # --- pretty print ---
+        print(f"\n{cls.__name__} — {sequence_dir.name}")
+        print("─" * 50)
+
+        print("Raw channels")
+        if raw_present:
+            print("  present  :", ", ".join(raw_present))
+        if raw_missing:
+            print("  missing  :", ", ".join(raw_missing))
+        if not raw_present and not raw_missing:
+            print("  (none)")
+
+        print("Preprocessed channels")
+        if preprocess:
+            for key, meta in sorted(preprocess.items()):
+                ts_info = (
+                    f"← timestamps from {meta['timestamps_from']}"
+                    if "timestamps_from" in meta
+                    else "← own timestamps"
+                )
+                src_info = (
+                    f"  sources: {meta['sources']}" if meta.get("sources") else ""
+                )
+                print(f"  {key:<20} {meta['loader']:<6} {ts_info}{src_info}")
+        else:
+            print("  (none)")
+        print()
+
+        return {
+            "raw": {"present": raw_present, "missing": raw_missing},
+            "preprocess": preprocess,
+        }
 
     def _load_or_create_config(self, sequence_dir: Path) -> dict:
         """Read ``.apairo`` if it exists, otherwise bootstrap and write it."""

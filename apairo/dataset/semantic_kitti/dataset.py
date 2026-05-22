@@ -11,6 +11,7 @@ _AVAILABLE_KEYS = {"lidar", "labels"}
 
 
 class SemanticKittiDataset(SynchronousDataset):
+    available_keys = frozenset(_AVAILABLE_KEYS)
     r"""SemanticKITTI synchronous dataset (LiDAR + semantic labels).
 
     Args:

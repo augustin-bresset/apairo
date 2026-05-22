@@ -5,6 +5,6 @@ PyYAML
 
 [dev]
 pytest
-black
-isort
-flake8
+
+[viz]
+matplotlib

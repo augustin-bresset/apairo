@@ -11,6 +11,7 @@ _AVAILABLE_KEYS = {"lidar", "labels"}
 
 
 class Rellis3DDataset(SynchronousDataset):
+    available_keys = frozenset(_AVAILABLE_KEYS)
     r"""Rellis-3D synchronous dataset (LiDAR + semantic labels).
 
     Args:

@@ -13,30 +13,28 @@ Requires-Dist: torchvision
 Requires-Dist: PyYAML
 Provides-Extra: dev
 Requires-Dist: pytest; extra == "dev"
-Requires-Dist: black; extra == "dev"
-Requires-Dist: isort; extra == "dev"
-Requires-Dist: flake8; extra == "dev"
+Provides-Extra: viz
+Requires-Dist: matplotlib; extra == "viz"
 Dynamic: license-file
 
 # apairo
 
 Unified robotics dataset loader for time-series and annotated sensor data.
 
-Handles the two fundamental layouts you find in robotics datasets:
-- **Synchronous** — every index `i` returns a complete, co-captured frame (semantic segmentation datasets, `.pt` files)
-- **Asynchronous** — multiple sensors firing at different rates, interleaved into a single timeline (KITTI-style multi-modal recordings)
+Handles the two fundamental layouts found in robotics datasets:
+
+- **Synchronous** — every index `i` returns a complete co-captured frame (semantic segmentation datasets, `.pt` files)
+- **Asynchronous** — multiple sensors firing at different rates, interleaved into a single timestamp-ordered timeline (KITTI-style multi-modal recordings)
 
 ---
 
 ## Installation
 
 ```bash
-git clone https://github.com/augustin-bresset/Apairo
-cd Apairo
-pip install -e .
+pip install apairo
 ```
 
-Requires Python ≥ 3.11, PyTorch, NumPy.
+Requires Python ≥ 3.11.  Optional visualization extras: `pip install apairo[viz]`.
 
 ---
 
@@ -45,239 +43,112 @@ Requires Python ≥ 3.11, PyTorch, NumPy.
 ```python
 import apairo
 
-# Synchronous: SemanticKITTI point cloud + labels
-ds = apairo.SemanticKittiDataset("/data/kitti", keys=["lidar", "labels"])
+# Synchronous: SemanticKITTI — index i returns one complete frame
+ds = apairo.SemanticKittiDataset("/data/semantic_kitti", keys=["lidar", "labels"])
 sample = ds[0]
-# sample.data["lidar"]  → torch.Tensor (N, 4) float32  [x, y, z, intensity]
-# sample.data["labels"] → torch.Tensor (N,)   int64    [raw semantic class]
-# sample.timestamp      → None
+# sample.data["lidar"]   → torch.Tensor (N, 4)  float32   [x, y, z, intensity]
+# sample.data["labels"]  → torch.Tensor (N,)    int64
+# sample.timestamp       → None
 
-for sample in ds:
-    lidar  = sample.data["lidar"]   # (N, 4)
-    labels = sample.data["labels"]  # (N,)
+# Asynchronous: TartanDrive — index i returns one event from the merged timeline
+ds = apairo.TartanKittiDataset("/data/tartan/2024-01-01_forest")
+sample = ds[0]
+# sample.data        → {"velodyne_0": tensor}   (one modality per event)
+# sample.timestamp   → float
 ```
+
+See [`examples/`](examples/) for complete usage patterns.
 
 ---
 
-## Synchronous datasets
+## Supported datasets
 
-Index `i` always returns a complete frame. `timestamps` is `None`, compatible with PyTorch `DataLoader`.
-
-### SemanticKITTI
-
-```python
-ds = apairo.SemanticKittiDataset(
-    root_dir="/data/semantic_kitti",   # must contain sequences/
-    keys=["lidar", "labels"],          # or just ["lidar"]
-)
-```
-
-Directory layout expected:
-```
-sequences/
-  00/
-    velodyne/  000000.bin  000001.bin  ...
-    labels/    000000.label  000001.label  ...
-  01/
-    ...
-```
-
-### Rellis-3D
-
-```python
-ds = apairo.Rellis3DDataset(
-    root_dir="/data/rellis",           # must contain Rellis-3D/
-    keys=["lidar", "labels"],
-)
-```
-
-### Goose3D
-
-```python
-ds = apairo.Goose3DDataset(
-    root_dir="/data/goose",
-    keys=["lidar", "labels"],
-)
-```
-
-### Tartan Drive (`.pt` format)
-
-```python
-ds = apairo.TartanDataset(
-    file_path="/data/tartan/seq_01.pt",
-    keys=["lidar", "image_left"],
-)
-```
+| Class | Layout | Modalities |
+|---|---|---|
+| `SemanticKittiDataset` | synchronous | lidar, labels |
+| `Rellis3DDataset` | synchronous | lidar, labels |
+| `Goose3DDataset` | synchronous | lidar, labels |
+| `TartanDataset` | synchronous | any (`.pt` format) |
+| `TartanKittiDataset` | asynchronous | any TartanDrive v2 channel |
+| `KittiDataset` | asynchronous | any KITTI-layout channel |
 
 ---
 
-## Asynchronous datasets
+## Preprocessing
 
-Multiple modalities recorded at different rates. Index `i` returns one event from the interleaved timeline, with its timestamp.
-
-### KittiDataset (multi-modal KITTI-style)
+apairo provides a framework for running and persisting preprocessing pipelines alongside datasets.
+Results are stored in the sequence directory following the dataset's layout conventions and registered automatically.
 
 ```python
-ds = apairo.KittiDataset(
-    directory="/data/tartan_kitti/seq_01",
-    keys=["image_left", "height_map", "controls"],
+from apairo.preprocess import FramePreprocessor
+from apairo.dataset import TartanKittiDataset
+
+class TravLabel(FramePreprocessor):
+    output_key      = "trav_label"
+    output_loader   = "npys"
+    input_keys      = ["velodyne_0"]
+    timestamps_from = "velodyne_0"
+
+    def process(self, sample):
+        return my_model(sample.data["velodyne_0"])  # → np.ndarray
+
+TartanKittiDataset.run_preprocess(TravLabel(), "/data/tartan/2024-01-01_forest")
+# writes  trav_label/000000.npy, 000001.npy, ...
+# updates .apairo config automatically
+```
+
+The sequence can then be loaded including the new channel:
+
+```python
+ds = TartanKittiDataset(
+    "/data/tartan/2024-01-01_forest",
+    keys=["velodyne_0", "trav_label"],
 )
-sample = ds[0]
-# sample.data      → {"image_left": tensor}   (one modality per event)
-# sample.timestamp → float
 ```
 
 ---
 
 ## Combining datasets
 
-### Concatenate multiple recordings
-
 ```python
 sequences = [
     apairo.SemanticKittiDataset(f"/data/kitti/seq_{i:02d}", keys=["lidar", "labels"])
     for i in range(4)
 ]
+
+# Concatenate
 combined = apairo.ConcatDataset(sequences)
-len(combined)  # sum of all frames
-```
 
-### Train / val / test split at sequence level
-
-Splitting at the sequence level avoids temporal leakage between splits.
-
-```python
-train_seqs, val_seqs, test_seqs = apairo.split_sequences(sequences, ratios=(0.8, 0.1, 0.1))
-train = apairo.ConcatDataset(train_seqs)
-val   = apairo.ConcatDataset(val_seqs)
+# Sequence-level train / val / test split (avoids temporal leakage)
+train, val, test = apairo.split_sequences(sequences, ratios=(0.8, 0.1, 0.1))
 ```
 
 ---
 
-## PyTorch DataLoader integration
-
-Synchronous datasets and `ConcatDataset` over synchronous data work directly with PyTorch's `DataLoader`:
+## PyTorch integration
 
 ```python
 from torch.utils.data import DataLoader
 
-torch_ds = apairo.TorchConcatDataset(sequences)
-loader = DataLoader(torch_ds, batch_size=8, shuffle=True, num_workers=4)
-
-for batch in loader:
-    # batch is a list of Sample objects (default collate)
-    pass
-```
-
-For asynchronous KITTI data:
-
-```python
-torch_ds = apairo.TorchKittiDataset(
-    directory="/data/tartan_kitti/seq_01",
-    keys=["image_left", "controls"],
-)
-loader = DataLoader(torch_ds, batch_size=1)
-```
-
----
-
-## Samplers (asynchronous data)
-
-Samplers operate on the timestamps of an asynchronous dataset to produce batched index windows.
-
-### LowFreqUniformSampler
-
-Batches data using the slowest modality as reference clock — every batch has the same shape.
-
-```python
-sampler = apairo.LowFreqUniformSampler(
-    timestamp=ds.timestamps,
-    sample_size=3,
-)
-
-for index_batch in sampler:
-    # index_batch: {"image_left": array([12, 13, 14]), "controls": array([60, 61, 62, ...])}
-    pass
-```
-
-### LatestSyncSampler
-
-Batches data when all streams have advanced — uses the latest available sample per stream.
-
-```python
-sampler = apairo.LatestSyncSampler(
-    timestamp=ds.timestamps,
-    sample_size=1,
+loader = DataLoader(
+    apairo.TorchConcatDataset(sequences),
+    batch_size=8,
+    shuffle=True,
+    num_workers=4,
 )
 ```
 
 ---
 
-## Custom datasets
+## Extending apairo
 
-Implement `SynchronousDataset` for co-captured frames:
-
-```python
-import apairo
-from apairo import Sample
-from pathlib import Path
-import torch
-
-class MyDataset(apairo.SynchronousDataset):
-    def __init__(self, root: str, keys=None):
-        if keys is None:
-            keys = ["lidar"]
-        self._set_keys(keys)
-        self._files = sorted(Path(root).glob("*.bin"))
-
-    def __len__(self):
-        return len(self._files)
-
-    def __getitem__(self, idx: int) -> Sample:
-        if not 0 <= idx < len(self):
-            raise IndexError(idx)
-        return Sample(data={"lidar": torch.zeros(100, 4)})
-
-    def __iter__(self):
-        self._pos = 0
-        return self
-
-    def __next__(self) -> Sample:
-        if self._pos >= len(self):
-            raise StopIteration
-        s = self[self._pos]
-        self._pos += 1
-        return s
-```
-
-For asynchronous multi-modal data (multiple sensors at different rates), subclass `AbstractDataset` and implement a timestamp-based timeline — see `apairo/dataset/kitti.py` as reference.
+Implement `SynchronousDataset` for co-captured frames or `KittiDataset` +
+`ConfigurableDataset` for asynchronous extensible datasets.
+See [`apairo/dataset/goose/`](apairo/dataset/goose/) and
+[`apairo/dataset/tartan_kitti/`](apairo/dataset/tartan_kitti/) as references.
 
 ---
 
-## Public API
+## License
 
-```python
-import apairo
-
-# Datasets
-apairo.SemanticKittiDataset   # synchronous, LiDAR + labels
-apairo.Rellis3DDataset        # synchronous, LiDAR + labels
-apairo.Goose3DDataset         # synchronous, LiDAR + labels
-apairo.TartanDataset          # synchronous, .pt format
-apairo.KittiDataset           # asynchronous, multi-modal KITTI layout
-
-# Composition
-apairo.ConcatDataset          # concatenate datasets
-apairo.TorchConcatDataset     # map-style PyTorch Dataset
-apairo.TorchKittiDataset      # map-style PyTorch Dataset (async)
-apairo.TorchKittiIterDataset  # iterable-style PyTorch Dataset (async)
-apairo.split_sequences        # sequence-level train/val/test split
-
-# Samplers (async)
-apairo.LowFreqUniformSampler
-apairo.LatestSyncSampler
-
-# Base classes for extension
-apairo.SynchronousDataset
-apairo.Sample
-```
+MIT
