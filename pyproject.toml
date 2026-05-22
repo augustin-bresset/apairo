@@ -20,11 +20,12 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-dev = ["pytest", "black", "isort", "flake8"]
+dev = ["pytest"]
+viz = ["matplotlib"]
 
 [tool.setuptools.packages.find]
 where = ["."]
 include = ["apairo*"]
 
 [tool.setuptools.package-data]
-apairo = ["parameter/**/*.yaml", "core/config/*.yaml"]
+apairo = ["dataset/**/*.yaml", "core/config/*.yaml"]
