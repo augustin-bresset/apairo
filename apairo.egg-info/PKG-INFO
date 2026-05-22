@@ -18,247 +18,266 @@ Requires-Dist: isort; extra == "dev"
 Requires-Dist: flake8; extra == "dev"
 Dynamic: license-file
 
-# Data Apairo
+# apairo
 
-## Current development status
+Unified robotics dataset loader for time-series and annotated sensor data.
 
-The project is currently in development and is not yet ready for use.
-The `trainers` and `exemple`(oups french term) folders are not functional yet.
+Handles the two fundamental layouts you find in robotics datasets:
+- **Synchronous** — every index `i` returns a complete, co-captured frame (semantic segmentation datasets, `.pt` files)
+- **Asynchronous** — multiple sensors firing at different rates, interleaved into a single timeline (KITTI-style multi-modal recordings)
 
+---
 
-## Overview
+## Installation
 
-Data Apairo is a project designed to manage datasets for machine learning and data analysis from robotics experiments.
-It provides tools for loading, processing, and splitting datasets, as well as utilities for configuration and logging.
-
-It is presented as an **extensive framework** for managing datasets in robotics, with a focus on time-series data.
-`Datasets` used in robotics are generally time-series data, in which the data is asynchronous and pseudo-periodic.
-This results in challenges such as the synchronization of the data during sampling, the management of time, and the management of the data itself to avoid RAM overflow, for example.
-
-It is built to be easily extensible and customizable, with a focus on simplicity and ease of use.
-For example, some `Sampler` are already implemented but because they are model-dependent, it is highly recommended to implement your own.
-
-Finally, we invite the user to use the existing `Objects` or create their own to manage the data in the way they want.
-
-The user can add their own `Dataset` by implementing a subclass of `AbstractDataset` that will interpret the data in the way they want.
-
-Then manage their pipeline with `Torch` functionalities and `Sampler` to manage the data in the way they want.
-
-## Getting Started
-
-### Prerequisites
-
-- Python 3.8 or higher
-- `pip` package manager
-
-### Installation
-
-1. Clone the repository:
-
-```sh
+```bash
 git clone https://github.com/augustin-bresset/Apairo
 cd Apairo
+pip install -e .
 ```
 
-### using Docker
+Requires Python ≥ 3.11, PyTorch, NumPy.
 
-1. Build the container:
+---
 
-```sh
-docker-compose build
-```
-
-2. Run the container:
-
-```sh
-docker-compose up -d
-```
-
-3. Enter the container:
-
-```sh
-docker-compose exec apairo bash
-```
-
-### Local Installation
-
-1. Install the required packages:
-
-```sh
-# Optional: Create a virtual environment
-python3 -m venv venv
-source venv/bin/activate
-
-# Install the required packages
-pip install -r requirements.txt
-```
-
-### Usage
-
-#### Dataset
-
-Different datasets are available in the `src/dataset` directory.
-For the example, we will use the `TartanKittiDataset` dataset.
-
-All of the datasets contain a `__getitem__` method that returns a dictionary with the data.
-The index is sorted by time, so the data is returned in the order it was recorded.
-
-We consider that our data directory is structured as follows:
-
-```
-data/tartan_kitti_1/
-    images/
-        000000.png
-        000001.png
-        ...
-        timestamps.txt
-    poses/
-        poses.npy
-        timestamps.txt
-    height_map/
-        000000.npy
-        000001.npy
-        ...
-        timestamps.txt
-```
+## Quickstart
 
 ```python
-from src.dataset import TartanKittiDataset
+import apairo
 
-# Create the dataset
-dataset = TartanKittiDataset(
-    data_dir="data/tartan_kitti_1",
-    keys=["images", "poses", "height_map"],
+# Synchronous: SemanticKITTI point cloud + labels
+ds = apairo.SemanticKittiDataset("/data/kitti", keys=["lidar", "labels"])
+sample = ds[0]
+# sample.data["lidar"]  → torch.Tensor (N, 4) float32  [x, y, z, intensity]
+# sample.data["labels"] → torch.Tensor (N,)   int64    [raw semantic class]
+# sample.timestamp      → None
+
+for sample in ds:
+    lidar  = sample.data["lidar"]   # (N, 4)
+    labels = sample.data["labels"]  # (N,)
+```
+
+---
+
+## Synchronous datasets
+
+Index `i` always returns a complete frame. `timestamps` is `None`, compatible with PyTorch `DataLoader`.
+
+### SemanticKITTI
+
+```python
+ds = apairo.SemanticKittiDataset(
+    root_dir="/data/semantic_kitti",   # must contain sequences/
+    keys=["lidar", "labels"],          # or just ["lidar"]
 )
 ```
 
-Creating the dataset will perform pre-processing on the data, such as loading some data to check the dimensions and the timestamps.
-By doing this, it will recreate the timeline of the data.
-This is an internal feature that is used to ensure that the data is in the correct order. It is presented here to show how the data is managed.
-
-```python
-for (key, idx) in dataset.timeline:
-    print(key, idx)
->>> images 0
->>> poses 0
->>> poses 1
->>> height_map 0
-...
+Directory layout expected:
 ```
-The `timeline`attribute may need to be processed during the initialization for some datasets.
+sequences/
+  00/
+    velodyne/  000000.bin  000001.bin  ...
+    labels/    000000.label  000001.label  ...
+  01/
+    ...
+```
 
-
-That is how in the `TorchTKDataset` during preprocessing creates the timeline of the data.
-
-Then you can access the data by using the `__getitem__` method:
+### Rellis-3D
 
 ```python
-# Get some data
-from src.dataset import TorchTKDataset
-dataset = TorchTKDataset(
-    data_dir="data/tartan_kitti_1",
-    keys=["images", "poses", "height_map"],
+ds = apairo.Rellis3DDataset(
+    root_dir="/data/rellis",           # must contain Rellis-3D/
+    keys=["lidar", "labels"],
+)
+```
+
+### Goose3D
+
+```python
+ds = apairo.Goose3DDataset(
+    root_dir="/data/goose",
+    keys=["lidar", "labels"],
+)
+```
+
+### Tartan Drive (`.pt` format)
+
+```python
+ds = apairo.TartanDataset(
+    file_path="/data/tartan/seq_01.pt",
+    keys=["lidar", "image_left"],
+)
+```
+
+---
+
+## Asynchronous datasets
+
+Multiple modalities recorded at different rates. Index `i` returns one event from the interleaved timeline, with its timestamp.
+
+### KittiDataset (multi-modal KITTI-style)
+
+```python
+ds = apairo.KittiDataset(
+    directory="/data/tartan_kitti/seq_01",
+    keys=["image_left", "height_map", "controls"],
+)
+sample = ds[0]
+# sample.data      → {"image_left": tensor}   (one modality per event)
+# sample.timestamp → float
+```
+
+---
+
+## Combining datasets
+
+### Concatenate multiple recordings
+
+```python
+sequences = [
+    apairo.SemanticKittiDataset(f"/data/kitti/seq_{i:02d}", keys=["lidar", "labels"])
+    for i in range(4)
+]
+combined = apairo.ConcatDataset(sequences)
+len(combined)  # sum of all frames
+```
+
+### Train / val / test split at sequence level
+
+Splitting at the sequence level avoids temporal leakage between splits.
+
+```python
+train_seqs, val_seqs, test_seqs = apairo.split_sequences(sequences, ratios=(0.8, 0.1, 0.1))
+train = apairo.ConcatDataset(train_seqs)
+val   = apairo.ConcatDataset(val_seqs)
+```
+
+---
+
+## PyTorch DataLoader integration
+
+Synchronous datasets and `ConcatDataset` over synchronous data work directly with PyTorch's `DataLoader`:
+
+```python
+from torch.utils.data import DataLoader
+
+torch_ds = apairo.TorchConcatDataset(sequences)
+loader = DataLoader(torch_ds, batch_size=8, shuffle=True, num_workers=4)
+
+for batch in loader:
+    # batch is a list of Sample objects (default collate)
+    pass
+```
+
+For asynchronous KITTI data:
+
+```python
+torch_ds = apairo.TorchKittiDataset(
+    directory="/data/tartan_kitti/seq_01",
+    keys=["image_left", "controls"],
+)
+loader = DataLoader(torch_ds, batch_size=1)
+```
+
+---
+
+## Samplers (asynchronous data)
+
+Samplers operate on the timestamps of an asynchronous dataset to produce batched index windows.
+
+### LowFreqUniformSampler
+
+Batches data using the slowest modality as reference clock — every batch has the same shape.
+
+```python
+sampler = apairo.LowFreqUniformSampler(
+    timestamp=ds.timestamps,
+    sample_size=3,
 )
 
-dataset[0]
->>> {"key": "images", "data": ..., "timestamp": ...}
-
-dataset[1]
->>> {"key": "poses", "data": ..., "timestamp": ...}
-
-dataset[2]
->>> {"key": "poses", "data": ..., "timestamp": ...}
-
-dataset[3]
->>> {"key": "height_map","data": ..., "timestamp": ...}
+for index_batch in sampler:
+    # index_batch: {"image_left": array([12, 13, 14]), "controls": array([60, 61, 62, ...])}
+    pass
 ```
 
-#### Sampler
+### LatestSyncSampler
 
-The `Sampler` is used to sample the data in the dataset. It means reuniting the data in the way you want to train your model.
-The `Sampler` is independent of the dataset and can be used with any dataset.
-Furthermore, the `Sampler` has to respect the timeline of the data.
-Some `Sampler` are already implemented in the `src/sampler` directory with simple functionalities.
-Such as :
-* LatestSyncSampler : Return the latest synchronized data.
-* LowFrequencySampler : Return the data sampled by stacking the data with their lower frequency.
+Batches data when all streams have advanced — uses the latest available sample per stream.
 
-Those examples may not be enough for your model, so you can implement your own `Sampler` class.
-
-
-
-#### Trainer
-
-In the `trainers` directory, you will put your training scripts.
-Then execute the following command to run the training:
-
-```sh
-python3 -m trainers.my_trainer
+```python
+sampler = apairo.LatestSyncSampler(
+    timestamp=ds.timestamps,
+    sample_size=1,
+)
 ```
 
-### Configuration
+---
 
-Configuration files are located in the `config/` directory. You can customize the training and dataset parameters by editing the YAML files.
+## Custom datasets
 
-### Test
+Implement `SynchronousDataset` for co-captured frames:
 
-To run the tests, use the following command in the root directory:
+```python
+import apairo
+from apairo import Sample
+from pathlib import Path
+import torch
 
-```sh
-python3 -m unittest
+class MyDataset(apairo.SynchronousDataset):
+    def __init__(self, root: str, keys=None):
+        if keys is None:
+            keys = ["lidar"]
+        self._set_keys(keys)
+        self._files = sorted(Path(root).glob("*.bin"))
+
+    def __len__(self):
+        return len(self._files)
+
+    def __getitem__(self, idx: int) -> Sample:
+        if not 0 <= idx < len(self):
+            raise IndexError(idx)
+        return Sample(data={"lidar": torch.zeros(100, 4)})
+
+    def __iter__(self):
+        self._pos = 0
+        return self
+
+    def __next__(self) -> Sample:
+        if self._pos >= len(self):
+            raise StopIteration
+        s = self[self._pos]
+        self._pos += 1
+        return s
 ```
 
-## Data
+For asynchronous multi-modal data (multiple sensors at different rates), subclass `AbstractDataset` and implement a timestamp-based timeline — see `apairo/dataset/kitti.py` as reference.
 
-As mentioned before, the data is generally time-series data, meaning that the data is asynchronous and the time is not fixed (aperiodic).
-This brings some challenges to ensure that the user has control over the data and the time.
+---
 
-### Dataset
+## Public API
 
-To ensure the data remains in the same conditions as reality, the `Dataset` class is designed to keep the data in the same order as it was recorded.
+```python
+import apairo
 
-So in its `Mapping` and `Iterable` form, `__getitem__` and `__iter__` will return the data in **time order**.
+# Datasets
+apairo.SemanticKittiDataset   # synchronous, LiDAR + labels
+apairo.Rellis3DDataset        # synchronous, LiDAR + labels
+apairo.Goose3DDataset         # synchronous, LiDAR + labels
+apairo.TartanDataset          # synchronous, .pt format
+apairo.KittiDataset           # asynchronous, multi-modal KITTI layout
 
-### Sampler
+# Composition
+apairo.ConcatDataset          # concatenate datasets
+apairo.TorchConcatDataset     # map-style PyTorch Dataset
+apairo.TorchKittiDataset      # map-style PyTorch Dataset (async)
+apairo.TorchKittiIterDataset  # iterable-style PyTorch Dataset (async)
+apairo.split_sequences        # sequence-level train/val/test split
 
-The sampler, such as the one in PyTorch, is used to sample the data by managing the indexes to avoid mismanagement of the data.
+# Samplers (async)
+apairo.LowFreqUniformSampler
+apairo.LatestSyncSampler
 
-But we take our situation into account, the data is time-dependent, so the `Sampler` works on the timeline to return the associated indexes. In this way, a sampler is independent of the dataset and can be used with any dataset.
-
-
-## Organization
-
-...
-
-### Architecture
-
-The project is organized as follows:
-
-- `trainers/`: Contains the training scripts.
-    Those scripts are used to train the models on the datasets.
-- `src/`: Contains the source code of the project.
-      - `core/`: Contains the core classes of the project. (Mostly abstract classes)
-      - `dataset/`: Contains the dataset classes.
-      - `loader/`: Contains the loader classes.
-      - `sampler/`: Contains the sampler classes.
-      - `utils/`: Contains utility functions and classes.
-- `config/`: Contains the configuration files. (Not sure to keep it)
-- `test/`: Contains the test files.
-
-### Design
-
-The idea is that the user will code their own `Trainer` script in the `trainers/` folder.
-If a tool is missing, the user can implement it in the `src/` folder except for the `core` folder which contains the abstract classes.
-
-This way we present already implemented tools that permit the user to start quickly creating their own model. And if it is not enough the user can:
-
-- change the data they are using, they can implement their own `Dataset` class with appropriate `Loader`.
-- change the way the data is sampled, they can implement their own `Sampler` class.
-
-And in future versions:
-
-- Use and create transformation `Node` in the same philosophy as [kedro](https://kedro.org/).
-
-### Notes
-
-In a future version, the unit tests folder will be in the `src/` folder to test the classes.
+# Base classes for extension
+apairo.SynchronousDataset
+apairo.Sample
+```

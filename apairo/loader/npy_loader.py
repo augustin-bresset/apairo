@@ -12,7 +12,7 @@ class NPYLoader(AbstractLoader):
 
     def __init__(self, directory: str | Path) -> None:
         directory = Path(directory)
-        npy_files = list(directory.glob("*.npy"))
+        npy_files = sorted(directory.glob("*.npy"))
         if not npy_files:
             raise FileExtensionError(f"No .npy file found in {directory}")
         self.array: torch.Tensor = torch.from_numpy(np.load(npy_files[0]))

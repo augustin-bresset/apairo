@@ -12,12 +12,17 @@ from apairo.core.sample import Sample
 
 
 class KittiDataset(AbstractDataset):
-    r"""Dataset for KITTI-formatted robotics data (e.g. Tartan Drive).
+    r"""Generic dataset for KITTI-layout directories (one subdirectory per modality).
+
+    Each modality subdirectory must contain a ``timestamps.txt`` file (or have one
+    declared via the loader profile) and data files in a format known to the loader
+    registry (``npys``, ``npy``, ``bin``, ``img``).
 
     Args:
         directory: Path to the dataset root directory.
         keys: Modality names to load (must match subdirectory names).
-        dataset_profile: YAML profile filename mapping keys to loader types.
+        dataset_profile: YAML profile filename **or** absolute Path mapping keys
+            to loader types.
     """
     synchronous: bool = False
 
@@ -25,7 +30,7 @@ class KittiDataset(AbstractDataset):
         self,
         directory: str | Path,
         keys: List[str],
-        dataset_profile: str = "tartan_kitti.yaml",
+        dataset_profile: str | Path,
     ) -> None:
         self._profile: Dict[str, str] = load_profile(dataset_profile)
         self._files: Dict[str, str] = get_files(str(directory))

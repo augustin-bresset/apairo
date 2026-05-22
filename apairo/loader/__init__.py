@@ -4,22 +4,20 @@ from .npys_loader import NPYSLoader
 from .pt_loader import PTLoader
 from .bin_loader import BINLoader
 import os
+from pathlib import Path
 import numpy as np
 import yaml
-from apairo.utils.paths import dataset_profile_directory_path
 
 
 str_to_loader = {
     "img": IMGLoader,
     "npys": NPYSLoader,
     "npy": NPYLoader,
-    "npys_img": NPYSLoader,  # For the moment, we will use npys by default
+    "npys_img": NPYSLoader,
     "bin": BINLoader,
 }
 
-# Loader is a abstract class : not public
 __all__ = [
-    "Loader",
     "IMGLoader",
     "NPYLoader",
     "NPYSLoader",
@@ -27,7 +25,7 @@ __all__ = [
     "BINLoader",
     "str_to_loader",
     "loads_timestamps",
-    "load_profile"
+    "load_profile",
 ]
 
 
@@ -36,14 +34,11 @@ def load_timestamps(file):
 
 
 def loads_timestamps(keys: list, files: dict) -> dict:
-    r"""Load all the timestamps from the files.
+    r"""Load timestamps for each key from its subdirectory's ``timestamps.txt``.
 
-    To do so, we will load all the timestamps files that exist on each directory
-    then for the directory that do not have the timestamps, we will use the timestamps of the closest directory.
-    It will return a dictionary with the timestamps of each fields.
-    Args:
-        files (list[str]) :
-            List of the files in the dataset (they are presumed to be the directories)
+    Keys without a ``timestamps.txt`` must be declared in ``timestamps_replacement``
+    (TartanDrive legacy aliases) or handled upstream by the dataset class before
+    calling this function.
     """
     timestamps_replacement = {
         "depth_left": "image_left",
@@ -51,25 +46,33 @@ def loads_timestamps(keys: list, files: dict) -> dict:
         "stereo_colored_point_cloud_gmf": "stereo_colored_point_cloud",
     }
     timestamps = {}
-    no_ts_directorys = []
-    # Load the timestamps that already exist
+    no_ts_dirs = []
     for key in keys:
         if key not in str_to_loader:
             if "timestamps.txt" in os.listdir(files[key]):
                 timestamps[key] = load_timestamps(os.path.join(files[key], "timestamps.txt"))
             else:
-                no_ts_directorys.append(key)
+                no_ts_dirs.append(key)
 
-    # Load the timestamps that are not originally in the directory
-    for no_ts_directory in no_ts_directorys:
-        if no_ts_directory not in timestamps_replacement:
-            raise ValueError(f"No timestamps for {no_ts_directory}")
-        timestamps[no_ts_directory] = timestamps[timestamps_replacement[no_ts_directory]]
+    for key in no_ts_dirs:
+        if key not in timestamps_replacement:
+            raise ValueError(
+                f"No timestamps.txt for '{key}' and no alias declared. "
+                f"If this is a preprocessed channel, declare it via register_channel(..., timestamps_from=...)."
+            )
+        timestamps[key] = timestamps[timestamps_replacement[key]]
 
     return timestamps
 
 
-def load_profile(name_file="profile.yaml"):
-    """Load a `yaml` profile file. It is presumed to be in the `src/parameter` directory."""
-    with open(os.path.join(dataset_profile_directory_path, name_file), 'r') as file:
-        return yaml.load(file, Loader=yaml.FullLoader)
+def load_profile(profile_path: str | Path) -> dict:
+    """Load a YAML loader-profile file.
+
+    Each dataset subpackage bundles its own profile alongside its class and
+    passes the absolute path here via ``Path(__file__).parent / 'profile.yaml'``.
+
+    Args:
+        profile_path: Absolute path to a YAML profile file.
+    """
+    with open(profile_path, "r") as f:
+        return yaml.safe_load(f)

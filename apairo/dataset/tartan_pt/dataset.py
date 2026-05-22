@@ -34,7 +34,6 @@ class TartanPT(AbstractDataset):
 
     @keys.setter
     def keys(self, keys) -> None:
-        # Reload file when keys change after __init__
         self._loader = PTLoader(str(self._file_path))
         self.timestamps = self._loader.get_timestamps()
         self._loader.set_keys(keys)

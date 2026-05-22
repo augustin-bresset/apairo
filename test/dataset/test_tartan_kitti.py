@@ -3,9 +3,12 @@
 import pytest
 import os
 import numpy as np
+from pathlib import Path
 from apairo.dataset.kitti import KittiDataset as TartanKittiDataset
 from apairo.loader import NPYLoader
 from apairo.core.sample import Sample
+
+_PROFILE = Path(__file__).parent.parent.parent / "apairo/dataset/tartan_kitti/profile.yaml"
 
 # Assuming these utilities are available or will be refactored into fixtures
 from test.utils import (
@@ -53,7 +56,8 @@ def tartan_data(tmp_path):
 def dataset(tartan_data):
     return TartanKittiDataset(
         directory=str(tartan_data),
-        keys=["controls", "height_map", "image_left"]
+        keys=["controls", "height_map", "image_left"],
+        dataset_profile=_PROFILE,
     )
 
 

@@ -37,6 +37,33 @@ for sample in ds:
     labels = sample.data["labels"]  # (N,)
 ```
 
+**Preprocess**
+You can u
+```python
+
+>import apairo
+>ds_goose = apairo.Goose("/data/goose")
+>ds_goose.features
+['lidar','label']
+>
+>SET_TRAVERSABLE = {
+>    23, # Asphalt
+>    24, # Gravel
+>    31, # Soil
+>    50, # Low Grass
+>    51, # High Grass
+>}
+>def map_label(label: int) -> int:
+>    """ Label remapping for traversability
+>    """
+>    return int(label in SET_TRAVERSABLE)
+>
+>apairp
+
+
+```
+
+
 ---
 
 ## Synchronous datasets
