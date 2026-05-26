@@ -11,6 +11,7 @@ Usage:
 """
 
 import argparse
+import logging
 from pathlib import Path
 
 import numpy as np
@@ -55,10 +56,21 @@ def main():
     parser.add_argument("--config", default="examples/goose_traversable_labels.yaml")
     args = parser.parse_args()
 
-    preprocessor = TraversabilityPreprocessor(args.config)
-    logging.info("Traversable labels : %s", sorted(preprocessor._traversable))
+    seq_dir = Path(args.seq).resolve()
+    output_dir = seq_dir / "trav_label"
 
-    Goose3DDataset.run_preprocess(preprocessor, args.seq)
+    preprocessor = TraversabilityPreprocessor(args.config)
+
+    logging.info("Config          : %s", Path(args.config).resolve())
+    logging.info("Traversable IDs : %s", sorted(preprocessor._traversable))
+    logging.info("Input sequence  : %s", seq_dir)
+    logging.info("Output dir      : %s", output_dir)
+    logging.info("")
+
+    Goose3DDataset.run_preprocess(preprocessor, seq_dir)
+
+    logging.info("")
+    logging.info("Channel '%s' registered in %s/.apairo", preprocessor.output_key, seq_dir)
 
 
 if __name__ == "__main__":
