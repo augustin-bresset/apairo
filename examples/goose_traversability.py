@@ -54,6 +54,7 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--root", required=True, help="GOOSE split root (e.g. GOOSE_3D/train)")
     parser.add_argument("--config", default="examples/goose_traversable_labels.yaml")
+    parser.add_argument("--overwrite", action="store_true", help="Recompute even if output already exists")
     args = parser.parse_args()
 
     root_dir = Path(args.root).resolve()
@@ -65,7 +66,7 @@ def main():
     logging.info("Output key      : %s  (format: %s)", preprocessor.output_key, preprocessor.output_loader)
     logging.info("")
 
-    Goose3DDataset.run_preprocess(preprocessor, root_dir)
+    Goose3DDataset.run_preprocess(preprocessor, root_dir, overwrite=args.overwrite)
 
     logging.info("")
     logging.info("Channel '%s' registered in %s/.apairo", preprocessor.output_key, root_dir)
