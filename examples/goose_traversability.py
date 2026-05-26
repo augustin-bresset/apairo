@@ -48,13 +48,15 @@ class TraversabilityPreprocessor(FramePreprocessor):
 
 
 def main():
+    logging.basicConfig(level=logging.DEBUG, format="%(message)s")
+
     parser = argparse.ArgumentParser()
     parser.add_argument("--seq", required=True, help="GOOSE sequence directory")
     parser.add_argument("--config", default="examples/goose_traversable_labels.yaml")
     args = parser.parse_args()
 
     preprocessor = TraversabilityPreprocessor(args.config)
-    print(f"Traversable labels : {sorted(preprocessor._traversable)}")
+    logging.info("Traversable labels : %s", sorted(preprocessor._traversable))
 
     Goose3DDataset.run_preprocess(preprocessor, args.seq)
 
