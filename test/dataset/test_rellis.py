@@ -102,3 +102,68 @@ def test_mismatched_file_counts(tmp_path):
     np.random.randint(0, 20, 60, dtype=np.int32).tofile(lbl_dir / "000000.label")
     with pytest.raises(ValueError):
         Rellis3DDataset(tmp_path, keys=["lidar", "labels"])
+
+
+# ---------------------------------------------------------------------------
+# Derived key tests
+# ---------------------------------------------------------------------------
+
+N_FRAMES_DERIVED = 3
+N_ELEV = 32
+
+
+def _write_apairo(seq_dir: Path, key: str, loader: str) -> None:
+    import yaml
+
+    config = {
+        "version": 1,
+        "channels": {
+            key: {"kind": "preprocess", "loader": loader, "has_timestamps": False}
+        },
+    }
+    with open(seq_dir / ".apairo", "w") as f:
+        yaml.dump(config, f)
+
+
+@pytest.fixture
+def rellis_root_derived(tmp_path):
+    for seq in ["00000", "00001"]:
+        bin_dir = tmp_path / "Rellis-3D" / seq / "os1_cloud_node_kitti_bin"
+        bin_dir.mkdir(parents=True)
+        elev_dir = tmp_path / "Rellis-3D" / seq / "elevation_map"
+        elev_dir.mkdir(parents=True)
+        for i in range(N_FRAMES_DERIVED):
+            np.random.rand(N_POINTS, 4).astype(np.float32).tofile(bin_dir / f"{i:06d}.bin")
+            np.save(elev_dir / f"{i:06d}.npy", np.random.rand(N_ELEV).astype(np.float32))
+        _write_apairo(tmp_path / "Rellis-3D" / seq, "elevation_map", "npys")
+    return tmp_path
+
+
+def test_derived_key_loaded_from_apairo(rellis_root_derived):
+    ds = Rellis3DDataset(rellis_root_derived, keys=["lidar", "elevation_map"])
+    assert len(ds) == N_FRAMES_DERIVED * 2
+    sample = ds[0]
+    assert "elevation_map" in sample.data
+    assert isinstance(sample.data["elevation_map"], torch.Tensor)
+
+
+def test_derived_key_without_apairo_raises(tmp_path):
+    bin_dir = tmp_path / "Rellis-3D" / "00000" / "os1_cloud_node_kitti_bin"
+    bin_dir.mkdir(parents=True)
+    elev_dir = tmp_path / "Rellis-3D" / "00000" / "elevation_map"
+    elev_dir.mkdir(parents=True)
+    for i in range(2):
+        np.random.rand(N_POINTS, 4).astype(np.float32).tofile(bin_dir / f"{i:06d}.bin")
+        np.save(elev_dir / f"{i:06d}.npy", np.random.rand(N_ELEV).astype(np.float32))
+    with pytest.raises(KeyError):
+        Rellis3DDataset(tmp_path, keys=["lidar", "elevation_map"])
+
+
+def test_derived_key_missing_files_raises(tmp_path):
+    bin_dir = tmp_path / "Rellis-3D" / "00000" / "os1_cloud_node_kitti_bin"
+    bin_dir.mkdir(parents=True)
+    for i in range(2):
+        np.random.rand(N_POINTS, 4).astype(np.float32).tofile(bin_dir / f"{i:06d}.bin")
+    _write_apairo(tmp_path / "Rellis-3D" / "00000", "elevation_map", "npys")
+    with pytest.raises(FileNotFoundError):
+        Rellis3DDataset(tmp_path, keys=["lidar", "elevation_map"])

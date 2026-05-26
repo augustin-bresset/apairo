@@ -6,6 +6,7 @@ import torch
 
 from apairo.core.synchronous_dataset import SynchronousDataset
 from apairo.core.sample import Sample
+from apairo.loader import DERIVED_LOADERS
 
 _AVAILABLE_KEYS = {"lidar", "labels"}
 
@@ -23,18 +24,35 @@ class SemanticKittiDataset(SynchronousDataset):
         if keys is None:
             keys = ["lidar", "labels"]
         root = Path(root_dir)
-        invalid = set(keys) - _AVAILABLE_KEYS
-        if invalid:
-            raise KeyError(f"Unknown keys {invalid}. Available: {_AVAILABLE_KEYS}")
+        self._root = root
+
+        native_keys = [k for k in keys if k in _AVAILABLE_KEYS]
+        derived_keys = [k for k in keys if k not in _AVAILABLE_KEYS]
+
+        if derived_keys and not native_keys:
+            raise KeyError(
+                f"Derived keys {derived_keys} require at least one native key "
+                f"({sorted(_AVAILABLE_KEYS)}) alongside them."
+            )
+
         self._set_keys(list(keys))
         self._files: dict[str, list[Path]] = {}
         if "lidar" in self._keys:
             self._files["lidar"] = sorted(root.glob("sequences/*/velodyne/*.bin"))
         if "labels" in self._keys:
             self._files["labels"] = sorted(root.glob("sequences/*/labels/*.label"))
-        lengths = {k: len(v) for k, v in self._files.items()}
+        lengths = {k: len(v) for k, v in self._files.items() if k in _AVAILABLE_KEYS}
         if len(set(lengths.values())) > 1:
             raise ValueError(f"Mismatched file counts per key: {lengths}")
+
+        self._derived_loaders: dict[str, str] = {}
+        if derived_keys:
+            ref_files = self._files[native_keys[0]]
+            seq_dirs = sorted({f.parent.parent for f in ref_files})
+            for key in derived_keys:
+                ext = self._get_derived_ext(seq_dirs, key)
+                self._derived_loaders[key] = ext
+                self._files[key] = self._discover_derived(key, ext)
 
     def __len__(self) -> int:
         return len(next(iter(self._files.values())))
@@ -51,6 +69,9 @@ class SemanticKittiDataset(SynchronousDataset):
             elif key == "labels":
                 arr = np.fromfile(path, dtype=np.int32) & 0xFFFF
                 data[key] = torch.from_numpy(arr.copy()).long()
+            else:
+                ext = self._derived_loaders[key]
+                data[key] = DERIVED_LOADERS[ext](path)
         return Sample(data=data)
 
     def __iter__(self):
