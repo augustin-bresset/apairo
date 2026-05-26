@@ -4,6 +4,7 @@ from typing import TYPE_CHECKING
 import numpy as np
 
 from apairo.core.preprocessor import FramePreprocessor, SequencePreprocessor
+from apairo.writer import WRITERS
 
 if TYPE_CHECKING:
     from apairo.core.preprocessor import Preprocessor
@@ -82,15 +83,9 @@ def _run_frame(preprocessor: FramePreprocessor, dataset, output_dir: Path) -> No
     for idx, sample in enumerate(dataset):
         result = _to_numpy(preprocessor.process(sample))
 
-        if preprocessor.output_loader in ("npys", "npys_img"):
-            np.save(output_dir / f"{idx:06d}.npy", result)
-        elif preprocessor.output_loader == "bin":
-            result.astype(np.float32).tofile(output_dir / f"{idx:06d}.bin")
-        else:
-            raise ValueError(
-                f"output_loader '{preprocessor.output_loader}' is not supported "
-                f"for FramePreprocessor.  Use 'npys' or 'bin'."
-            )
+        writer = WRITERS[preprocessor.output_loader]()
+        ext = "npy" if preprocessor.output_loader in ("npys", "npys_img") else preprocessor.output_loader
+        writer.write(result, output_dir / f"{idx:06d}.{ext}")
 
         if preprocessor.timestamps_from is None:
             timestamps.append(sample.timestamp)
@@ -102,13 +97,8 @@ def _run_frame(preprocessor: FramePreprocessor, dataset, output_dir: Path) -> No
 def _run_sequence(preprocessor: SequencePreprocessor, dataset, output_dir: Path) -> None:
     result = _to_numpy(preprocessor.process(iter(dataset)))
 
-    if preprocessor.output_loader == "npy":
-        np.save(output_dir / f"{preprocessor.output_key}.npy", result)
-    else:
-        raise ValueError(
-            f"output_loader '{preprocessor.output_loader}' is not supported "
-            f"for SequencePreprocessor.  Use 'npy'."
-        )
+    writer = WRITERS[preprocessor.output_loader]()
+    writer.write(result, output_dir / f"{preprocessor.output_key}.{preprocessor.output_loader}")
 
     if preprocessor.timestamps_from is None:
         key = preprocessor.input_keys[0]
