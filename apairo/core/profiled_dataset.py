@@ -164,6 +164,10 @@ class ProfiledDataset(SynchronousDataset, ConfigurableDataset):
 
         self._derived_loaders: dict[str, str] = {}
         if derived_keys:
+            if ref_key is None:
+                raise ValueError(
+                    "Cannot load derived keys without at least one native key that has files on disk."
+                )
             seq_dirs = sorted({self._seq_root(f) for f in self._files[ref_key]})
             for key in derived_keys:
                 ext = self._get_derived_ext(seq_dirs, key)
