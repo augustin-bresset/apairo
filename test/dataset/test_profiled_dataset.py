@@ -174,3 +174,64 @@ def test_is_synchronous(goose_root):
     ds = _GooseDS(goose_root, keys=["lidar"])
     assert ds.timestamps is None
     assert ds.is_synchronous is True
+
+
+class _RellisDS(ProfiledDataset):
+    _profile = "rellis.yaml"
+
+@pytest.fixture
+def rellis_root(tmp_path):
+    for seq in ["00000", "00001"]:
+        d = tmp_path / "Rellis-3D" / seq / "os1_cloud_node_kitti_bin"
+        d.mkdir(parents=True)
+        for i in range(3):
+            _make_bin(d / f"{i:06d}.bin")
+    return tmp_path
+
+
+def test_goose_derived_path_structure(goose_root):
+    ds = _GooseDS(goose_root, keys=["lidar"])
+    p = ds.derived_path(0, "trav_label", "npy")
+    rel = p.relative_to(goose_root)
+    assert rel.parts[0] == "trav_label"   # modality replaced at idx=0
+    assert rel.parts[-1] == "000000.npy"
+
+def test_kitti_derived_path_structure(kitti_root):
+    ds = _KittiDS(kitti_root, keys=["lidar"])
+    p = ds.derived_path(0, "trav_label", "npy")
+    rel = p.relative_to(kitti_root)
+    # sequences/00/velodyne/000000.bin → sequences/00/trav_label/000000.npy
+    assert rel.parts[0] == "sequences"
+    assert rel.parts[2] == "trav_label"
+    assert rel.parts[-1] == "000000.npy"
+
+def test_rellis_derived_path_structure(rellis_root):
+    ds = _RellisDS(rellis_root, keys=["lidar"])
+    p = ds.derived_path(0, "trav_label", "npy")
+    rel = p.relative_to(rellis_root)
+    # Rellis-3D/00000/os1_cloud_node_kitti_bin/000000.bin → Rellis-3D/00000/trav_label/000000.npy
+    assert rel.parts[0] == "Rellis-3D"
+    assert rel.parts[2] == "trav_label"
+    assert rel.parts[-1] == "000000.npy"
+
+def test_goose_seq_root(goose_root):
+    ds = _GooseDS(goose_root, keys=["lidar"])
+    first_file = ds._files["lidar"][0]
+    seq = ds._seq_root(first_file)
+    # GOOSE: lidar/train/seq_a/000000.bin → _seq_depth=1 → seq_root = first_file.parent
+    assert seq == first_file.parent
+
+def test_kitti_seq_root(kitti_root):
+    ds = _KittiDS(kitti_root, keys=["lidar"])
+    first_file = ds._files["lidar"][0]
+    seq = ds._seq_root(first_file)
+    # sequences/00/velodyne/000000.bin → _seq_depth=2 → seq_root = first_file.parent.parent
+    assert seq == first_file.parent.parent
+
+def test_bootstrap_config_uses_profile(goose_root):
+    ds = _GooseDS(goose_root, keys=["lidar", "labels"])
+    cfg = ds._bootstrap_config(goose_root)
+    assert "lidar" in cfg["channels"]
+    assert "labels" in cfg["channels"]
+    assert cfg["channels"]["lidar"]["loader"] == "bin"
+    assert cfg["channels"]["labels"]["loader"] == "bin"

@@ -165,6 +165,42 @@ class ProfiledDataset(SynchronousDataset, ConfigurableDataset):
         self._derived_loaders: dict[str, str] = {}
         # Derived key support added in Task 6
 
+    def _seq_root(self, path: Path) -> Path:
+        d = path
+        for _ in range(self._seq_depth):
+            d = d.parent
+        return d
+
+    def derived_path(self, idx: int, key: str, ext: str) -> Path:
+        ref = next(iter(self._files.values()))[idx]
+        rel = ref.relative_to(self._root)
+        parts = list(rel.parts)
+        ref_key = next(iter(self._files))
+        src_spec = self._modalities.get(ref_key)
+        n = len(src_spec.effective_subpath(ref_key)) if src_spec else 1
+        parts[self._modality_idx : self._modality_idx + n] = [key]
+        parts[-1] = f"{ref.stem}.{ext}"
+        return self._root / Path(*parts)
+
+    def _is_present(self, root_dir: Path, key: str) -> bool:
+        spec = self._modalities[key]
+        fixed_parts = [l.value for l in self._layers if l.type == "fixed"]
+        mapped = self._mapped_name(key)
+        if fixed_parts:
+            pattern = str(Path(*fixed_parts) / "**" / mapped / f"*{spec.ext}")
+        else:
+            pattern = f"**/{mapped}/**/*{spec.ext}"
+        return any(root_dir.glob(pattern))
+
+    def _bootstrap_config(self, root_dir: Path) -> dict:
+        channels = {}
+        for key in self.available_keys:
+            if self._is_present(root_dir, key):
+                spec = self._modalities[key]
+                loader = spec.loader or _EXT_TO_LOADER.get(spec.ext, "bin")
+                channels[key] = {"loader": loader, "has_timestamps": False}
+        return {"version": 1, "channels": channels}
+
     def _mapped_name(self, key: str) -> str:
         layer = self._layers[self._modality_layer_idx]
         if isinstance(layer.value, dict):
