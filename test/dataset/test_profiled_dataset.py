@@ -1,8 +1,7 @@
 import pytest
 import numpy as np
-import torch
 from pathlib import Path
-from apairo.core.profiled_dataset import ModalitySpec, _parse_layers, LayerSpec
+from apairo.core.profiled_dataset import ModalitySpec, _parse_layers, LayerSpec, ProfiledDataset
 
 def test_modality_spec_from_dict_basic():
     spec = ModalitySpec.from_dict("lidar", {"ext": ".bin", "dtype": "float32", "reshape": [-1, 4]})
@@ -88,8 +87,6 @@ def kitti_root(tmp_path):
     return tmp_path  # 2 seqs × 4 frames = 8 total
 
 
-from apairo.core.profiled_dataset import ProfiledDataset
-
 class _GooseDS(ProfiledDataset):
     _profile = "goose.yaml"
     def __getitem__(self, idx): raise NotImplementedError
@@ -140,3 +137,11 @@ def test_missing_native_key_raises(tmp_path):
     _make_bin(tmp_path / "lidar" / "train" / "seq_a" / "000000.bin")
     with pytest.raises(FileNotFoundError):
         _GooseDS(tmp_path, keys=["labels"])
+
+def test_goose_split_filter(goose_root):
+    ds = _GooseDS(goose_root, keys=["lidar"], split="train")
+    assert len(ds) == 6  # all files are under "train"
+
+def test_goose_split_filter_no_match(goose_root):
+    with pytest.raises(FileNotFoundError):
+        _GooseDS(goose_root, keys=["lidar"], split="val")

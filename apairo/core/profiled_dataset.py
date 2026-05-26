@@ -184,14 +184,16 @@ class ProfiledDataset(SynchronousDataset, ConfigurableDataset):
 
         files = sorted(self._root.glob(pattern))
 
-        if self._split_filter and any(l.type == "split" for l in self._layers):
-            split_idx = next(i for i, l in enumerate(self._layers) if l.type == "split")
-            files = [
-                f for f in files
-                if split_idx < len(f.relative_to(self._root).parts)
-                and f.relative_to(self._root).parts[split_idx] == self._split_filter
-            ]
+        if self._split_filter:
+            split_layer = next((l for l in self._layers if l.type == "split"), None)
+            if split_layer is not None:
+                files = [
+                    f for f in files
+                    if self._split_filter in f.relative_to(self._root).parts
+                ]
         return files
 
     def __len__(self) -> int:
+        if not self._files:
+            return 0
         return len(next(iter(self._files.values())))
