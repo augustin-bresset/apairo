@@ -128,17 +128,17 @@ def _write_apairo(seq_dir: Path, key: str, loader: str) -> None:
 @pytest.fixture
 def goose_root_derived(tmp_path):
     # lidar at seq_a/lidar/scan/000000.bin
-    # ref.parent.parent = seq_a/lidar  => seq_dirs = [seq_a/lidar, seq_b/lidar]
-    # .apairo goes in seq_a/lidar/  and derived files in seq_a/lidar/elevation_map/
+    # _seq_root = path.parent.parent.parent = seq_a/
+    # .apairo at seq_a/.apairo, derived files at seq_a/elevation_map/
     for seq in ["seq_a", "seq_b"]:
         lidar_dir = tmp_path / seq / "lidar" / "scan"
         lidar_dir.mkdir(parents=True)
-        elev_dir = tmp_path / seq / "lidar" / "elevation_map"
+        elev_dir = tmp_path / seq / "elevation_map"
         elev_dir.mkdir(parents=True)
         for i in range(N_FRAMES_DERIVED):
             _make_bin(lidar_dir / f"{i:06d}.bin")
             np.save(elev_dir / f"{i:06d}.npy", np.random.rand(N_ELEV).astype(np.float32))
-        _write_apairo(tmp_path / seq / "lidar", "elevation_map", "npys")
+        _write_apairo(tmp_path / seq, "elevation_map", "npys")
     return tmp_path
 
 
@@ -153,11 +153,11 @@ def test_derived_key_loaded_from_apairo(goose_root_derived):
 def test_derived_key_without_apairo_raises(tmp_path):
     lidar_dir = tmp_path / "seq_a" / "lidar" / "scan"
     lidar_dir.mkdir(parents=True)
-    elev_dir = tmp_path / "seq_a" / "lidar" / "elevation_map"
+    elev_dir = tmp_path / "seq_a" / "elevation_map"
     elev_dir.mkdir(parents=True)
     for i in range(2):
         _make_bin(lidar_dir / f"{i:06d}.bin")
-        np.random.rand(N_ELEV).astype(np.float32).tofile(elev_dir / f"{i:06d}.npy")
+        np.save(elev_dir / f"{i:06d}.npy", np.zeros(N_ELEV, dtype=np.float32))
     with pytest.raises(KeyError):
         Goose3DDataset(tmp_path, keys=["lidar", "elevation_map"])
 
@@ -167,6 +167,6 @@ def test_derived_key_missing_files_raises(tmp_path):
     lidar_dir.mkdir(parents=True)
     for i in range(2):
         _make_bin(lidar_dir / f"{i:06d}.bin")
-    _write_apairo(tmp_path / "seq_a" / "lidar", "elevation_map", "npys")
+    _write_apairo(tmp_path / "seq_a", "elevation_map", "npys")
     with pytest.raises(FileNotFoundError):
         Goose3DDataset(tmp_path, keys=["lidar", "elevation_map"])

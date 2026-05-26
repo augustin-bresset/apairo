@@ -52,7 +52,7 @@ class Rellis3DDataset(SynchronousDataset):
         self._derived_loaders: dict[str, str] = {}
         if derived_keys:
             ref_files = self._files[native_keys[0]]
-            seq_dirs = sorted({f.parent.parent for f in ref_files})
+            seq_dirs = sorted({self._seq_root(f) for f in ref_files})
             for key in derived_keys:
                 ext = self._get_derived_ext(seq_dirs, key)
                 self._derived_loaders[key] = ext

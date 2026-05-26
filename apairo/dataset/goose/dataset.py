@@ -50,7 +50,7 @@ class Goose3DDataset(SynchronousDataset, ConfigurableDataset):
         self._derived_loaders: dict[str, str] = {}
         if derived_keys:
             ref_files = self._files[native_keys[0]]
-            seq_dirs = sorted({f.parent.parent for f in ref_files})
+            seq_dirs = sorted({self._seq_root(f) for f in ref_files})
             for key in derived_keys:
                 ext = self._get_derived_ext(seq_dirs, key)
                 self._derived_loaders[key] = ext
@@ -75,6 +75,9 @@ class Goose3DDataset(SynchronousDataset, ConfigurableDataset):
                 ext = self._derived_loaders[key]
                 data[key] = DERIVED_LOADERS[ext](path)
         return Sample(data=data)
+
+    def _seq_root(self, path: Path) -> Path:
+        return path.parent.parent.parent
 
     def _bootstrap_config(self, sequence_dir: Path) -> dict:
         channels = {

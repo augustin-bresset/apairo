@@ -21,9 +21,18 @@ class SynchronousDataset(AbstractDataset):
     def root_dir(self) -> Path:
         return self._root
 
+    def _seq_root(self, path: Path) -> Path:
+        """Return the sequence root directory for a native file path.
+
+        Datasets with deeper file structures (e.g. seq/lidar/scan/file.bin)
+        should override this to go up the correct number of levels.
+        Default: path.parent.parent (one modality directory deep).
+        """
+        return path.parent.parent
+
     def derived_path(self, idx: int, key: str, ext: str) -> Path:
         ref = next(iter(self._files.values()))[idx]
-        return ref.parent.parent / key / f"{ref.stem}.{ext}"
+        return self._seq_root(ref) / key / f"{ref.stem}.{ext}"
 
     def _discover_derived(self, key: str, ext: str) -> list[Path]:
         paths = [self.derived_path(i, key, ext) for i in range(len(self))]
