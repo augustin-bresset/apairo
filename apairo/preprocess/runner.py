@@ -12,6 +12,14 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 
+_LOADER_TO_EXT = {
+    "npys": "npy",
+    "npys_img": "npy",
+    "npy": "npy",
+    "bin": "bin",
+    "pt": "pt",
+}
+
 
 def _to_numpy(data) -> np.ndarray:
     if hasattr(data, "detach"):          # torch.Tensor
@@ -22,66 +30,63 @@ def _to_numpy(data) -> np.ndarray:
 def run(
     preprocessor: Preprocessor,
     dataset_cls: type,
-    sequence_dir: str | Path,
+    root_dir: str | Path,
     *,
     overwrite: bool = False,
 ) -> None:
-    """Run a preprocessor on a sequence and persist the output.
+    """Run a preprocessor on a dataset and persist the output channel.
 
-    Handles everything downstream of the user's :meth:`~Preprocessor.process`
-    call: directory creation, file naming, timestamp writing, and
-    :func:`~apairo.core.config.register_channel`.
+    Uses ``dataset.derived_path()`` to determine where each output file is
+    written, so every dataset can control its own file layout.  Registration
+    is written to ``root_dir/.apairo``.
 
     Args:
         preprocessor: A :class:`~apairo.core.preprocessor.FramePreprocessor`
             or :class:`~apairo.core.preprocessor.SequencePreprocessor` instance.
-        dataset_cls: The dataset class to use for loading input data (must be
-            a :class:`~apairo.core.configurable_dataset.ConfigurableDataset`
-            subclass so that :meth:`register_channel` is available).
-        sequence_dir: Path to the sequence directory.
-        overwrite: If ``False`` (default) and the output directory already
-            exists, raise :exc:`FileExistsError`.  Set to ``True`` to
-            recompute and overwrite.
+        dataset_cls: Dataset class whose ``derived_path()`` defines file placement.
+        root_dir: Dataset root directory (passed to ``dataset_cls.__init__``).
+        overwrite: If ``False`` (default) and the first output file already
+            exists, raise :exc:`FileExistsError`.
 
     Raises:
-        FileExistsError: If the output directory exists and ``overwrite`` is
-            ``False``.
-        TypeError: If ``preprocessor`` is neither a :class:`FramePreprocessor`
-            nor a :class:`SequencePreprocessor`.
+        FileExistsError: If output already exists and ``overwrite`` is ``False``.
+        TypeError: If ``preprocessor`` is neither ``FramePreprocessor`` nor
+            ``SequencePreprocessor``.
     """
-    sequence_dir = Path(sequence_dir)
-    output_dir = sequence_dir / preprocessor.output_key
-
-    if output_dir.exists() and not overwrite:
-        raise FileExistsError(
-            f"Output directory '{output_dir}' already exists. "
-            f"Pass overwrite=True to recompute."
-        )
-    output_dir.mkdir(exist_ok=True)
-
-    dataset = dataset_cls(sequence_dir, keys=preprocessor.input_keys)
+    root_dir = Path(root_dir)
+    dataset = dataset_cls(root_dir, keys=preprocessor.input_keys)
     n = len(dataset)
+
+    ext = _LOADER_TO_EXT[preprocessor.output_loader]
+
+    first_path = dataset.derived_path(0, preprocessor.output_key, ext)
+    if first_path.exists() and not overwrite:
+        raise FileExistsError(
+            f"Derived key '{preprocessor.output_key}' already exists "
+            f"(e.g. {first_path}). Pass overwrite=True to recompute."
+        )
+
     logger.info(
         "%-20s  %s  (%d frame%s)",
         preprocessor.__class__.__name__,
-        sequence_dir.name,
+        root_dir.name,
         n,
         "s" if n != 1 else "",
     )
 
     if isinstance(preprocessor, FramePreprocessor):
-        _run_frame(preprocessor, dataset, output_dir)
+        _run_frame(preprocessor, dataset, ext)
     elif isinstance(preprocessor, SequencePreprocessor):
-        _run_sequence(preprocessor, dataset, output_dir)
+        _run_sequence(preprocessor, dataset, ext)
     else:
         raise TypeError(
             f"preprocessor must be a FramePreprocessor or SequencePreprocessor, "
             f"got {type(preprocessor).__name__}."
         )
 
-    logger.info("Done  →  %s", output_dir)
+    logger.info("Done  →  '%s' registered in %s", preprocessor.output_key, root_dir)
     dataset_cls.register_channel(
-        sequence_dir,
+        root_dir,
         preprocessor.output_key,
         preprocessor.output_loader,
         timestamps_from=preprocessor.timestamps_from,
@@ -89,31 +94,29 @@ def run(
     )
 
 
-def _run_frame(preprocessor: FramePreprocessor, dataset, output_dir: Path) -> None:
-    timestamps = []
+def _run_frame(preprocessor: FramePreprocessor, dataset, ext: str) -> None:
+    writer = WRITERS[preprocessor.output_loader]()
     n = len(dataset)
+    seq_timestamps: dict[Path, list] = {}
 
     for idx, sample in enumerate(dataset):
         logger.debug("[%d/%d]", idx + 1, n)
         result = _to_numpy(preprocessor.process(sample))
+        path = dataset.derived_path(idx, preprocessor.output_key, ext)
+        writer.write(result, path)
 
-        writer = WRITERS[preprocessor.output_loader]()
-        ext = "npy" if preprocessor.output_loader in ("npys", "npys_img") else preprocessor.output_loader
-        writer.write(result, output_dir / f"{idx:06d}.{ext}")
+        if preprocessor.timestamps_from is None and sample.timestamp is not None:
+            seq_timestamps.setdefault(path.parent, []).append(sample.timestamp)
 
-        if preprocessor.timestamps_from is None:
-            timestamps.append(sample.timestamp)
-
-    if timestamps:
-        np.savetxt(output_dir / "timestamps.txt", timestamps)
+    for seq_dir, timestamps in seq_timestamps.items():
+        np.savetxt(seq_dir / "timestamps.txt", timestamps)
 
 
-def _run_sequence(preprocessor: SequencePreprocessor, dataset, output_dir: Path) -> None:
+def _run_sequence(preprocessor: SequencePreprocessor, dataset, ext: str) -> None:
     result = _to_numpy(preprocessor.process(iter(dataset)))
-
-    writer = WRITERS[preprocessor.output_loader]()
-    writer.write(result, output_dir / f"{preprocessor.output_key}.{preprocessor.output_loader}")
+    out = dataset.root_dir / preprocessor.output_key / f"{preprocessor.output_key}.{ext}"
+    WRITERS[preprocessor.output_loader]().write(result, out)
 
     if preprocessor.timestamps_from is None:
         key = preprocessor.input_keys[0]
-        np.savetxt(output_dir / "timestamps.txt", dataset.timestamps[key])
+        np.savetxt(out.parent / "timestamps.txt", dataset.timestamps[key])

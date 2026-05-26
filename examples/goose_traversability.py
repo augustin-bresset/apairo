@@ -52,25 +52,23 @@ def main():
     logging.basicConfig(level=logging.DEBUG, format="%(message)s")
 
     parser = argparse.ArgumentParser()
-    parser.add_argument("--seq", required=True, help="GOOSE sequence directory")
+    parser.add_argument("--root", required=True, help="GOOSE split root (e.g. GOOSE_3D/train)")
     parser.add_argument("--config", default="examples/goose_traversable_labels.yaml")
     args = parser.parse_args()
 
-    seq_dir = Path(args.seq).resolve()
-    output_dir = seq_dir / "trav_label"
-
+    root_dir = Path(args.root).resolve()
     preprocessor = TraversabilityPreprocessor(args.config)
 
     logging.info("Config          : %s", Path(args.config).resolve())
     logging.info("Traversable IDs : %s", sorted(preprocessor._traversable))
-    logging.info("Input sequence  : %s", seq_dir)
-    logging.info("Output dir      : %s", output_dir)
+    logging.info("Dataset root    : %s", root_dir)
+    logging.info("Output key      : %s  (format: %s)", preprocessor.output_key, preprocessor.output_loader)
     logging.info("")
 
-    Goose3DDataset.run_preprocess(preprocessor, seq_dir)
+    Goose3DDataset.run_preprocess(preprocessor, root_dir)
 
     logging.info("")
-    logging.info("Channel '%s' registered in %s/.apairo", preprocessor.output_key, seq_dir)
+    logging.info("Channel '%s' registered in %s/.apairo", preprocessor.output_key, root_dir)
 
 
 if __name__ == "__main__":

@@ -17,12 +17,14 @@ def _make_label(path: Path, n: int = N_POINTS):
     np.random.randint(0, 64, n, dtype=np.int32).tofile(path)
 
 
+# Real GOOSE layout: <root>/lidar/split/seq/file.bin
+#                    <root>/labels/split/seq/file.label
 @pytest.fixture
 def goose_root(tmp_path):
     n_frames = 5
     for seq in ["seq_a", "seq_b"]:
-        lidar_dir = tmp_path / seq / "lidar" / "scan"
-        label_dir = tmp_path / seq / "labels" / "scan"
+        lidar_dir = tmp_path / "lidar" / "train" / seq
+        label_dir = tmp_path / "labels" / "train" / seq
         lidar_dir.mkdir(parents=True)
         label_dir.mkdir(parents=True)
         for i in range(n_frames):
@@ -92,14 +94,13 @@ def test_is_synchronous(goose_root):
 
 
 def test_paired_files_count_mismatch(tmp_path):
-    """Init must fail if lidar and labels counts differ."""
-    lidar_dir = tmp_path / "seq" / "lidar" / "scan"
-    label_dir = tmp_path / "seq" / "labels" / "scan"
+    lidar_dir = tmp_path / "lidar" / "train" / "seq"
+    label_dir = tmp_path / "labels" / "train" / "seq"
     lidar_dir.mkdir(parents=True)
     label_dir.mkdir(parents=True)
     _make_bin(lidar_dir / "000000.bin")
     _make_bin(lidar_dir / "000001.bin")
-    _make_label(label_dir / "000000.label")  # only one label file
+    _make_label(label_dir / "000000.label")
     with pytest.raises(ValueError):
         Goose3DDataset(tmp_path, keys=["lidar", "labels"])
 
@@ -112,33 +113,32 @@ N_FRAMES_DERIVED = 3
 N_ELEV = 48
 
 
-def _write_apairo(seq_dir: Path, key: str, loader: str) -> None:
+def _write_apairo(root: Path, key: str, loader: str) -> None:
     import yaml
-
     config = {
         "version": 1,
         "channels": {
             key: {"kind": "preprocess", "loader": loader, "has_timestamps": False}
         },
     }
-    with open(seq_dir / ".apairo", "w") as f:
+    with open(root / ".apairo", "w") as f:
         yaml.dump(config, f)
 
 
 @pytest.fixture
 def goose_root_derived(tmp_path):
-    # lidar at seq_a/lidar/scan/000000.bin
-    # _seq_root = path.parent.parent.parent = seq_a/
-    # .apairo at seq_a/.apairo, derived files at seq_a/elevation_map/
+    # GOOSE layout: lidar/train/seq/file.bin
+    # derived mirrors it:  elevation_map/train/seq/file.npy
+    # .apairo at root (registration happens at dataset root)
     for seq in ["seq_a", "seq_b"]:
-        lidar_dir = tmp_path / seq / "lidar" / "scan"
+        lidar_dir = tmp_path / "lidar" / "train" / seq
+        elev_dir  = tmp_path / "elevation_map" / "train" / seq
         lidar_dir.mkdir(parents=True)
-        elev_dir = tmp_path / seq / "elevation_map"
         elev_dir.mkdir(parents=True)
         for i in range(N_FRAMES_DERIVED):
             _make_bin(lidar_dir / f"{i:06d}.bin")
             np.save(elev_dir / f"{i:06d}.npy", np.random.rand(N_ELEV).astype(np.float32))
-        _write_apairo(tmp_path / seq, "elevation_map", "npys")
+    _write_apairo(tmp_path, "elevation_map", "npys")
     return tmp_path
 
 
@@ -150,10 +150,19 @@ def test_derived_key_loaded_from_apairo(goose_root_derived):
     assert isinstance(sample.data["elevation_map"], torch.Tensor)
 
 
+def test_derived_path_mirrors_modality_structure(goose_root_derived):
+    ds = Goose3DDataset(goose_root_derived, keys=["lidar"])
+    p = ds.derived_path(0, "trav_label", "npy")
+    # elevation_map/train/seq_a/000000.npy → trav_label/train/seq_a/000000.npy
+    assert p.parts[-4] == "trav_label"
+    assert p.suffix == ".npy"
+    assert p.stem == "000000"
+
+
 def test_derived_key_without_apairo_raises(tmp_path):
-    lidar_dir = tmp_path / "seq_a" / "lidar" / "scan"
+    lidar_dir = tmp_path / "lidar" / "train" / "seq_a"
+    elev_dir  = tmp_path / "elevation_map" / "train" / "seq_a"
     lidar_dir.mkdir(parents=True)
-    elev_dir = tmp_path / "seq_a" / "elevation_map"
     elev_dir.mkdir(parents=True)
     for i in range(2):
         _make_bin(lidar_dir / f"{i:06d}.bin")
@@ -163,10 +172,10 @@ def test_derived_key_without_apairo_raises(tmp_path):
 
 
 def test_derived_key_missing_files_raises(tmp_path):
-    lidar_dir = tmp_path / "seq_a" / "lidar" / "scan"
+    lidar_dir = tmp_path / "lidar" / "train" / "seq_a"
     lidar_dir.mkdir(parents=True)
     for i in range(2):
         _make_bin(lidar_dir / f"{i:06d}.bin")
-    _write_apairo(tmp_path / "seq_a", "elevation_map", "npys")
+    _write_apairo(tmp_path, "elevation_map", "npys")
     with pytest.raises(FileNotFoundError):
         Goose3DDataset(tmp_path, keys=["lidar", "elevation_map"])

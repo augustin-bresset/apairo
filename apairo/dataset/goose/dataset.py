@@ -76,8 +76,15 @@ class Goose3DDataset(SynchronousDataset, ConfigurableDataset):
                 data[key] = DERIVED_LOADERS[ext](path)
         return Sample(data=data)
 
-    def _seq_root(self, path: Path) -> Path:
-        return path.parent.parent.parent
+    def derived_path(self, idx: int, key: str, ext: str) -> Path:
+        # GOOSE layout: <root>/<modality>/split/seq/file
+        # derived data mirrors that with key replacing the modality dir
+        ref = next(iter(self._files.values()))[idx]
+        rel = ref.relative_to(self._root)
+        parts = list(rel.parts)
+        parts[0] = key
+        parts[-1] = f"{ref.stem}.{ext}"
+        return self._root / Path(*parts)
 
     def _bootstrap_config(self, sequence_dir: Path) -> dict:
         channels = {

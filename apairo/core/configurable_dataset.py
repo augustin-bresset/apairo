@@ -85,28 +85,29 @@ class ConfigurableDataset:
     def run_preprocess(
         cls,
         preprocessor: Preprocessor,
-        sequence_dir: str | Path,
+        root_dir: str | Path,
         *,
         overwrite: bool = False,
     ) -> None:
-        """Run a preprocessor on a sequence and persist the output channel.
+        """Run a preprocessor on a dataset and persist the output channel.
 
-        Delegates to :func:`apairo.preprocess.run`, which handles file naming,
-        format-specific saving, timestamp writing, and ``.apairo`` registration.
+        Delegates to :func:`apairo.preprocess.run`, which handles file placement
+        via ``derived_path()``, format-specific saving, timestamp writing, and
+        ``.apairo`` registration at ``root_dir``.
 
         Args:
             preprocessor: A :class:`~apairo.core.preprocessor.FramePreprocessor`
                 or :class:`~apairo.core.preprocessor.SequencePreprocessor`.
-            sequence_dir: Path to the sequence directory.
+            root_dir: Dataset root directory.
             overwrite: Recompute if output already exists.
 
         Example::
 
-            TartanKittiDataset.run_preprocess(MyPreprocessor(), seq_dir)
+            Goose3DDataset.run_preprocess(MyPreprocessor(), "/data/goose/GOOSE_3D/train")
         """
         from apairo.preprocess.runner import run
 
-        run(preprocessor, cls, sequence_dir, overwrite=overwrite)
+        run(preprocessor, cls, root_dir, overwrite=overwrite)
 
     @classmethod
     def describe(cls, sequence_dir: str | Path) -> dict:
