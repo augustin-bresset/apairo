@@ -5,7 +5,9 @@ from .pt_loader import PTLoader
 from .bin_loader import BINLoader
 import os
 from pathlib import Path
+from typing import Callable
 import numpy as np
+import torch
 import yaml
 
 
@@ -17,6 +19,12 @@ str_to_loader = {
     "bin": BINLoader,
 }
 
+DERIVED_LOADERS: dict[str, Callable[[Path], torch.Tensor]] = {
+    "npy": lambda path: torch.from_numpy(np.load(path)),
+    "pt": lambda path: torch.load(path, weights_only=True),
+    "bin": lambda path: torch.from_numpy(np.fromfile(path, dtype=np.float32)),
+}
+
 __all__ = [
     "IMGLoader",
     "NPYLoader",
@@ -24,6 +32,7 @@ __all__ = [
     "PTLoader",
     "BINLoader",
     "str_to_loader",
+    "DERIVED_LOADERS",
     "loads_timestamps",
     "load_profile",
 ]
