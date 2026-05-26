@@ -7,7 +7,6 @@ from apairo.preprocess import FramePreprocessor, SequencePreprocessor
 
 from apairo.dataset.kitti import KittiDataset
 from apairo.dataset.tartan_kitti import TartanKittiDataset
-from apairo.dataset.tartan_pt import TartanPT as TartanDataset
 from apairo.dataset.concat import ConcatDataset, TorchConcatDataset
 from apairo.dataset.torch_wrappers import TorchKittiDataset, TorchKittiIterDataset
 from apairo.dataset import split_sequences
@@ -30,7 +29,6 @@ __all__ = [
     "SequencePreprocessor",
     "KittiDataset",
     "TartanKittiDataset",
-    "TartanDataset",
     "ConcatDataset",
     "TorchConcatDataset",
     "TorchKittiDataset",

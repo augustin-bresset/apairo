@@ -13,6 +13,7 @@ Requires-Dist: torchvision
 Requires-Dist: PyYAML
 Provides-Extra: dev
 Requires-Dist: pytest; extra == "dev"
+Requires-Dist: matplotlib; extra == "dev"
 Provides-Extra: viz
 Requires-Dist: matplotlib; extra == "viz"
 Dynamic: license-file

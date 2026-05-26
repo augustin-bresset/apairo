@@ -5,6 +5,7 @@ PyYAML
 
 [dev]
 pytest
+matplotlib
 
 [viz]
 matplotlib

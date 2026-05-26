@@ -37,9 +37,6 @@ apairo/dataset/tartan_kitti/__init__.py
 apairo/dataset/tartan_kitti/dataset.py
 apairo/dataset/tartan_kitti/integration.yaml
 apairo/dataset/tartan_kitti/profile.yaml
-apairo/dataset/tartan_pt/__init__.py
-apairo/dataset/tartan_pt/dataset.py
-apairo/dataset/tartan_pt/profile.yaml
 apairo/loader/__init__.py
 apairo/loader/bin_loader.py
 apairo/loader/img_loader.py

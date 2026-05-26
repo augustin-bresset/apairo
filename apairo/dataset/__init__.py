@@ -1,18 +1,16 @@
 from .kitti import KittiDataset
 from .tartan_kitti import TartanKittiDataset
-from .tartan_pt import TartanPT
 from .goose import Goose3DDataset
 from .rellis import Rellis3DDataset
 from .semantic_kitti import SemanticKittiDataset
 from .concat import ConcatDataset, TorchConcatDataset
-from .torch_wrappers import TorchKittiDataset, TorchKittiIterDataset, TorchTartanPTDataset
+from .torch_wrappers import TorchKittiDataset, TorchKittiIterDataset
 
 from apairo.core.config import register_channel
 
 # backward-compat aliases
 TorchTKDataset = TorchKittiDataset
 TorchTKIterDataset = TorchKittiIterDataset
-TorchTPTDataset = TorchTartanPTDataset
 
 
 def split_sequences(
@@ -38,7 +36,6 @@ def split_sequences(
 __all__ = [
     "KittiDataset",
     "TartanKittiDataset",
-    "TartanPT",
     "Goose3DDataset",
     "Rellis3DDataset",
     "SemanticKittiDataset",
@@ -46,7 +43,6 @@ __all__ = [
     "TorchConcatDataset",
     "TorchKittiDataset",
     "TorchKittiIterDataset",
-    "TorchTartanPTDataset",
     "TorchTKDataset",
     "TorchTKIterDataset",
     "TorchTPTDataset",

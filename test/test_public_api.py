@@ -6,7 +6,6 @@ def test_public_names():
         "Sample",
         "SynchronousDataset",
         "KittiDataset",
-        "TartanDataset",
         "ConcatDataset",
         "TorchConcatDataset",
         "TorchKittiDataset",
