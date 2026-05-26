@@ -1,5 +1,6 @@
 import torch
 import pytest
+from pathlib import Path
 from apairo.core.synchronous_dataset import SynchronousDataset
 from apairo.core.sample import Sample
 
@@ -16,6 +17,30 @@ class MockSyncDataset(SynchronousDataset):
         if not 0 <= idx < self._n:
             raise IndexError(idx)
         return Sample(data={"lidar": torch.zeros(100, 4), "label": torch.zeros(100)})
+
+    def __iter__(self):
+        self._pos = 0
+        return self
+
+    def __next__(self) -> Sample:
+        if self._pos >= self._n:
+            raise StopIteration
+        s = self[self._pos]
+        self._pos += 1
+        return s
+
+
+class MockSyncDatasetWithFiles(SynchronousDataset):
+    def __init__(self, root: Path, files: dict[str, list[Path]]):
+        self._root = root
+        self._files = files
+        self._n = len(next(iter(files.values())))
+
+    def __len__(self) -> int:
+        return self._n
+
+    def __getitem__(self, idx: int) -> Sample:
+        return Sample(data={})
 
     def __iter__(self):
         self._pos = 0
@@ -53,3 +78,28 @@ def test_iter():
 def test_out_of_range():
     with pytest.raises(IndexError):
         MockSyncDataset(3)[3]
+
+
+def test_root_dir(tmp_path):
+    files = {"lidar": [tmp_path / "seq0" / "lidar" / "000000.bin"]}
+    ds = MockSyncDatasetWithFiles(tmp_path, files)
+    assert ds.root_dir == tmp_path
+    assert isinstance(ds.root_dir, Path)
+
+
+def test_derived_path_structure(tmp_path):
+    lidar_path = tmp_path / "seq0" / "lidar" / "000000.bin"
+    files = {"lidar": [lidar_path]}
+    ds = MockSyncDatasetWithFiles(tmp_path, files)
+    result = ds.derived_path(0, "elevation_map", "npy")
+    assert result.stem == "000000"
+    assert result.suffix == ".npy"
+    assert result.parent.name == "elevation_map"
+
+
+def test_discover_derived_raises_when_files_missing(tmp_path):
+    lidar_path = tmp_path / "seq0" / "lidar" / "000000.bin"
+    files = {"lidar": [lidar_path]}
+    ds = MockSyncDatasetWithFiles(tmp_path, files)
+    with pytest.raises(FileNotFoundError, match="key"):
+        ds._discover_derived("key", "npy")
