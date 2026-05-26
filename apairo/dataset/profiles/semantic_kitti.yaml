@@ -1,0 +1,16 @@
+layers:
+  - fixed: sequences
+  - sequence
+  - modality:
+      lidar: velodyne
+      labels: labels
+modalities:
+  lidar:
+    ext: .bin
+    dtype: float32
+    reshape: [-1, 4]
+  labels:
+    ext: .label
+    dtype: int32
+    mask: 65535
+    torch_dtype: int64

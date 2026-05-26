@@ -1,0 +1,14 @@
+layers:
+  - split: [train, val, test]
+  - modality
+  - split: [train, val, test]
+  - sequence
+modalities:
+  lidar:
+    ext: .bin
+    dtype: float32
+    reshape: [-1, 4]
+  labels:
+    ext: .label
+    dtype: int32
+    torch_dtype: int64
