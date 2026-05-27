@@ -137,8 +137,6 @@ if __name__ == "__main__":
         try:
             timestamps[folder_name] = np.loadtxt(os.path.join(path, "timestamps.txt"))
         except FileNotFoundError:
-            print(f"File not found: {os.path.join(path, 'timestamps.txt')}")
-            print(f"{os.listdir(path)[:5]}")
             continue
 
     indexes = get_indexes(timestamps)

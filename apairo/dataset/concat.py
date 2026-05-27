@@ -102,4 +102,11 @@ class ConcatDataset(AbstractDataset):
 
 
 class TorchConcatDataset(ConcatDataset, Dataset):
-    r"""Map-style PyTorch Dataset wrapping ConcatDataset."""
+    """Map-style PyTorch Dataset wrapping ConcatDataset.
+
+    .. deprecated::
+        Inherit from :class:`ConcatDataset` and :class:`torch.utils.data.Dataset`
+        directly — or pass a :class:`ConcatDataset` to ``DataLoader`` directly,
+        since ``DataLoader`` does not require ``Dataset`` inheritance.
+        This class will be removed in a future release.
+    """

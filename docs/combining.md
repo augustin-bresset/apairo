@@ -15,7 +15,6 @@ sequences = [
 combined = apairo.ConcatDataset(sequences)
 print(len(combined))        # sum of all sequence lengths
 sample = combined[0]        # first frame from the first sequence
-sample = combined[-1]       # not supported — use len(combined) - 1
 ```
 
 Indexing is O(log n) via binary search over cumulative lengths.
@@ -43,42 +42,43 @@ The split is positional (first 80% of sequences → train, etc.) rather than ran
 
 ## PyTorch DataLoader
 
-### Map-style (synchronous datasets)
+### Synchronous datasets
 
-`TorchConcatDataset` wraps `ConcatDataset` with PyTorch's `Dataset` interface, enabling shuffled sampling and multi-process loading.
+`ConcatDataset` implements `__getitem__` and `__len__`, which is all PyTorch's `DataLoader` needs for map-style loading. No wrapper class required:
 
 ```python
 from torch.utils.data import DataLoader
 
 train_loader = DataLoader(
-    apairo.TorchConcatDataset(train),
+    apairo.ConcatDataset(train),
     batch_size=8,
     shuffle=True,
     num_workers=4,
 )
 
 for batch in train_loader:
-    # batch is a dict[str, torch.Tensor] with an extra batch dimension
     lidar  = batch["lidar"]    # (8, N, 4)
     labels = batch["labels"]   # (8, N)
 ```
 
 !!! note "Batching point clouds"
-    Point clouds have variable numbers of points per frame. Use `collate_fn` to handle variable-length tensors, or pre-pad/sub-sample in your preprocessor.
+    Point clouds have variable numbers of points per frame. Use a custom `collate_fn` to handle variable-length tensors, or pre-process scans to a fixed size in your preprocessor.
 
-### Iterable-style (asynchronous datasets)
+### Asynchronous datasets
 
-For asynchronous datasets, use `TorchKittiIterDataset` (iterable-style) or `TorchKittiDataset` (map-style with pre-built index):
+`DataLoader` checks `isinstance(dataset, IterableDataset)` to decide between map-style and iterable-style loading. For async datasets, inherit from `IterableDataset` to avoid `DataLoader` attempting random access:
 
 ```python
-from torch.utils.data import DataLoader
+from torch.utils.data import IterableDataset, DataLoader
 
-iter_ds = apairo.TorchKittiIterDataset(
-    apairo.TartanKittiDataset("/data/tartan/seq_001")
-)
+class MyTartanDataset(apairo.TartanKittiDataset, IterableDataset):
+    pass
 
-loader = DataLoader(iter_ds, batch_size=1, num_workers=0)
+ds = MyTartanDataset("/data/tartan/seq", keys=["velodyne_0"])
+loader = DataLoader(ds, batch_size=1, num_workers=0)
 ```
+
+The one-line subclass is intentional — you own this integration point and can add custom `collate_fn`, worker init, or sampling logic without touching the library.
 
 ---
 

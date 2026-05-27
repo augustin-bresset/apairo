@@ -65,6 +65,8 @@ nav:
     - Overview: datasets/index.md
     - YAML Profiles: datasets/yaml-profiles.md
     - Adding a Dataset: datasets/adding-a-dataset.md
+  - Async Datasets: async-datasets.md
   - Preprocessing: preprocessing.md
   - Combining Datasets: combining.md
+  - Samplers: samplers.md
   - API Reference: api/reference.md
