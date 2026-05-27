@@ -21,8 +21,6 @@ def _is_sequence_dir(path: Path, raw_profile: dict) -> bool:
 
 
 class TartanKittiDataset(KittiDataset, ConfigurableDataset):
-    available_keys: frozenset = frozenset(load_profile(_PROFILE_PATH).keys())
-    """All raw TartanDrive v2 channels supported by the KITTI layout profile."""
     r"""TartanDrive v2 dataset (KITTI layout).
 
     Accepts either a single sequence directory or a root directory that contains
@@ -50,6 +48,8 @@ class TartanKittiDataset(KittiDataset, ConfigurableDataset):
         keys: Channels to load. ``None`` → lazy (no loaders). ``"all"`` → all
             channels present in ``.apairo``.
     """
+
+    available_keys: frozenset = frozenset(load_profile(_PROFILE_PATH).keys())
 
     def __init__(
         self,

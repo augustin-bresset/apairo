@@ -103,7 +103,7 @@ class ConfigurableDataset:
 
         Example::
 
-            Goose3DDataset.run_preprocess(MyPreprocessor(), "/data/goose/GOOSE_3D/train")
+            MyDataset.run_preprocess(MyPreprocessor(), "/data/my_dataset")
         """
         from apairo.preprocess.runner import run
 
@@ -124,7 +124,7 @@ class ConfigurableDataset:
 
         Example::
 
-            TartanKittiDataset.describe("/data/tartan/2024-01-01_forest")
+            MyDataset.describe("/data/my_dataset/sequence_01")
         """
         sequence_dir = Path(sequence_dir)
         config_path = sequence_dir / CONFIG_FILENAME

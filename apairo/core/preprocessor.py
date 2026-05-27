@@ -69,8 +69,7 @@ class FramePreprocessor(Preprocessor):
                 contains exactly the keys declared in :attr:`input_keys`.
 
         Returns:
-            A ``numpy.ndarray`` or ``torch.Tensor`` representing the output for
-            this frame.
+            A ``numpy.ndarray`` representing the output for this frame.
         """
         ...
 
@@ -109,6 +108,6 @@ class SequencePreprocessor(Preprocessor):
             frames: Iterator of :class:`~apairo.core.sample.Sample` objects.
 
         Returns:
-            A ``numpy.ndarray`` or ``torch.Tensor`` of shape ``(N, ...)``.
+            A ``numpy.ndarray`` of shape ``(N, ...)``.
         """
         ...
