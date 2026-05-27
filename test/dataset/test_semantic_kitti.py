@@ -1,6 +1,5 @@
 import pytest
 import numpy as np
-import torch
 from pathlib import Path
 
 from apairo.dataset.semantic_kitti import SemanticKittiDataset
@@ -45,8 +44,8 @@ def test_getitem_returns_sample(kitti_root):
     assert s.timestamp is None
     assert s.data["lidar"].shape == (N_POINTS, 4)
     assert s.data["labels"].shape == (N_POINTS,)
-    assert s.data["lidar"].dtype == torch.float32
-    assert s.data["labels"].dtype == torch.int64
+    assert s.data["lidar"].dtype == np.float32
+    assert s.data["labels"].dtype == np.int64
 
 
 def test_iter(kitti_root):
@@ -162,7 +161,7 @@ def test_derived_key_loaded_from_apairo(kitti_root_derived):
     assert len(ds) == N_FRAMES_DERIVED * 2
     sample = ds[0]
     assert "elevation_map" in sample.data
-    assert isinstance(sample.data["elevation_map"], torch.Tensor)
+    assert isinstance(sample.data["elevation_map"], np.ndarray)
 
 
 def test_derived_key_without_apairo_raises(tmp_path):

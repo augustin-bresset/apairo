@@ -7,9 +7,7 @@ import os
 from pathlib import Path
 from typing import Callable
 import numpy as np
-import torch
 import yaml
-from torchvision.io import read_image
 
 
 str_to_loader = {
@@ -20,11 +18,35 @@ str_to_loader = {
     "bin": BINLoader,
 }
 
-DERIVED_LOADERS: dict[str, Callable[[Path], torch.Tensor]] = {
-    "npy": lambda path: torch.from_numpy(np.load(path)),
-    "pt": lambda path: torch.load(path, weights_only=True),
-    "bin": lambda path: torch.from_numpy(np.fromfile(path, dtype=np.float32)),
-    "img": lambda path: read_image(str(path)),
+
+def _load_pt(path: Path) -> np.ndarray:
+    try:
+        import torch
+
+        return torch.load(path, weights_only=True).numpy()
+    except ImportError:
+        raise ImportError(
+            "Loading .pt files requires PyTorch. " "Install it with: pip install torch"
+        )
+
+
+def _load_img(path: Path) -> np.ndarray:
+    try:
+        from PIL import Image
+
+        return np.array(Image.open(path))
+    except ImportError:
+        raise ImportError(
+            "Loading image files requires Pillow. "
+            "Install it with: pip install Pillow"
+        )
+
+
+DERIVED_LOADERS: dict[str, Callable[[Path], np.ndarray]] = {
+    "npy": lambda path: np.load(path),
+    "pt": _load_pt,
+    "bin": lambda path: np.fromfile(path, dtype=np.float32),
+    "img": _load_img,
 }
 
 __all__ = [
@@ -45,12 +67,7 @@ def load_timestamps(file):
 
 
 def loads_timestamps(keys: list, files: dict) -> dict:
-    r"""Load timestamps for each key from its subdirectory's ``timestamps.txt``.
-
-    Keys without a ``timestamps.txt`` must be declared in ``timestamps_replacement``
-    (TartanDrive legacy aliases) or handled upstream by the dataset class before
-    calling this function.
-    """
+    r"""Load timestamps for each key from its subdirectory's ``timestamps.txt``."""
     timestamps_replacement = {
         "depth_left": "image_left",
         "local_dino_map": "local_gridmap",
@@ -79,13 +96,6 @@ def loads_timestamps(keys: list, files: dict) -> dict:
 
 
 def load_profile(profile_path: str | Path) -> dict:
-    """Load a YAML loader-profile file.
-
-    Each dataset subpackage bundles its own profile alongside its class and
-    passes the absolute path here via ``Path(__file__).parent / 'profile.yaml'``.
-
-    Args:
-        profile_path: Absolute path to a YAML profile file.
-    """
+    """Load a YAML loader-profile file."""
     with open(profile_path, "r") as f:
         return yaml.safe_load(f)

@@ -1,6 +1,6 @@
 import pytest
 import numpy as np
-from torchvision.io import read_image
+from PIL import Image
 from apairo.loader import IMGLoader
 from test.utils import create_random_images
 
@@ -15,12 +15,12 @@ def img_loader_data(tmp_path):
 
 def test_len(img_loader_data):
     loader = IMGLoader(str(img_loader_data))
-    assert loader.shape == (3, 16, 16)
+    assert loader.shape == (16, 16, 3)  # HWC — PIL convention
 
 
 def test_iteration(img_loader_data):
     directory = img_loader_data
     loader = IMGLoader(str(directory))
     image0_path = directory / "000000.png"
-    image0 = read_image(str(image0_path))
-    assert np.allclose(loader[0], image0)
+    expected = np.array(Image.open(str(image0_path)))
+    assert np.allclose(loader[0], expected)

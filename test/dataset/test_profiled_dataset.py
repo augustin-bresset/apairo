@@ -1,11 +1,14 @@
 import pytest
 import numpy as np
-import torch
+import yaml
 from pathlib import Path
-from apairo.core.profiled_dataset import ModalitySpec, _parse_layers, LayerSpec, ProfiledDataset
+from apairo.core.profiled_dataset import ModalitySpec, _parse_layers, ProfiledDataset
+
 
 def test_modality_spec_from_dict_basic():
-    spec = ModalitySpec.from_dict("lidar", {"ext": ".bin", "dtype": "float32", "reshape": [-1, 4]})
+    spec = ModalitySpec.from_dict(
+        "lidar", {"ext": ".bin", "dtype": "float32", "reshape": [-1, 4]}
+    )
     assert spec.ext == ".bin"
     assert spec.dtype == "float32"
     assert spec.reshape == [-1, 4]
@@ -14,19 +17,29 @@ def test_modality_spec_from_dict_basic():
     assert spec.optional is False
     assert spec.effective_subpath("lidar") == ["lidar"]
 
+
 def test_modality_spec_ext_normalised():
     spec = ModalitySpec.from_dict("labels", {"ext": "label", "dtype": "int32"})
     assert spec.ext == ".label"
 
+
 def test_modality_spec_with_all_fields():
-    spec = ModalitySpec.from_dict("labels", {
-        "ext": ".label", "dtype": "int32", "mask": 65535,
-        "torch_dtype": "int64", "subpath": ["camera", "left"], "optional": True,
-    })
+    spec = ModalitySpec.from_dict(
+        "labels",
+        {
+            "ext": ".label",
+            "dtype": "int32",
+            "mask": 65535,
+            "torch_dtype": "int64",
+            "subpath": ["camera", "left"],
+            "optional": True,
+        },
+    )
     assert spec.mask == 65535
     assert spec.torch_dtype == "int64"
     assert spec.effective_subpath("labels") == ["camera", "left"]
     assert spec.optional is True
+
 
 def test_parse_layers_goose():
     raw = [
@@ -43,6 +56,7 @@ def test_parse_layers_goose():
     assert layers[1].value is None
     assert layers[3].type == "sequence"
 
+
 def test_parse_layers_kitti():
     raw = [
         {"fixed": "sequences"},
@@ -58,8 +72,10 @@ def test_parse_layers_kitti():
 
 N_POINTS = 40
 
+
 def _make_bin(path, n=N_POINTS):
     np.random.rand(n, 4).astype(np.float32).tofile(path)
+
 
 def _make_label(path, n=N_POINTS):
     np.random.randint(0, 64, n, dtype=np.int32).tofile(path)
@@ -91,6 +107,7 @@ def kitti_root(tmp_path):
 class _GooseDS(ProfiledDataset):
     _profile = "goose.yaml"
 
+
 class _KittiDS(ProfiledDataset):
     _profile = "semantic_kitti.yaml"
 
@@ -99,24 +116,30 @@ def test_goose_len(goose_root):
     ds = _GooseDS(goose_root, keys=["lidar", "labels"])
     assert len(ds) == 6
 
+
 def test_goose_available_keys():
     assert _GooseDS.available_keys == frozenset({"lidar", "labels"})
+
 
 def test_goose_modality_idx(goose_root):
     ds = _GooseDS(goose_root, keys=["lidar"])
     assert ds._modality_idx == 0  # lidar/train/seq/file → parts[0]="lidar"
 
+
 def test_kitti_len(kitti_root):
     ds = _KittiDS(kitti_root, keys=["lidar", "labels"])
     assert len(ds) == 8
+
 
 def test_kitti_modality_idx(kitti_root):
     ds = _KittiDS(kitti_root, keys=["lidar"])
     assert ds._modality_idx == 2  # sequences/00/velodyne/file → parts[2]="velodyne"
 
+
 def test_invalid_key_raises(goose_root):
     with pytest.raises(KeyError):
         _GooseDS(goose_root, keys=["nonexistent"])
+
 
 def test_mismatched_counts_raises(tmp_path):
     (tmp_path / "lidar" / "train" / "seq_a").mkdir(parents=True)
@@ -127,36 +150,43 @@ def test_mismatched_counts_raises(tmp_path):
     with pytest.raises(ValueError):
         _GooseDS(tmp_path, keys=["lidar", "labels"])
 
+
 def test_missing_native_key_raises(tmp_path):
     (tmp_path / "lidar" / "train" / "seq_a").mkdir(parents=True)
     _make_bin(tmp_path / "lidar" / "train" / "seq_a" / "000000.bin")
     with pytest.raises(FileNotFoundError):
         _GooseDS(tmp_path, keys=["labels"])
 
+
 def test_goose_split_filter(goose_root):
     ds = _GooseDS(goose_root, keys=["lidar"], split="train")
     assert len(ds) == 6  # all files are under "train"
 
+
 def test_goose_split_filter_no_match(goose_root):
     with pytest.raises(FileNotFoundError):
         _GooseDS(goose_root, keys=["lidar"], split="val")
+
 
 def test_goose_getitem_shapes(goose_root):
     ds = _GooseDS(goose_root, keys=["lidar", "labels"])
     s = ds[0]
     assert s.data["lidar"].shape == (N_POINTS, 4)
     assert s.data["labels"].shape == (N_POINTS,)
-    assert s.data["lidar"].dtype == torch.float32
-    assert s.data["labels"].dtype == torch.int64  # int32 promoted via torch_dtype
+    assert s.data["lidar"].dtype == np.float32
+    assert s.data["labels"].dtype == np.int64  # int32 promoted via torch_dtype
+
 
 def test_goose_iter_count(goose_root):
     ds = _GooseDS(goose_root, keys=["lidar"])
     assert len(list(ds)) == 6
 
+
 def test_goose_out_of_range(goose_root):
     ds = _GooseDS(goose_root, keys=["lidar"])
     with pytest.raises(IndexError):
         ds[6]
+
 
 def test_kitti_label_mask(kitti_root):
     # Write labels with instance bits set in upper 16 bits
@@ -170,6 +200,7 @@ def test_kitti_label_mask(kitti_root):
     assert s.data["labels"][0].item() == 0x0001
     assert s.data["labels"][1].item() == 0x0002
 
+
 def test_is_synchronous(goose_root):
     ds = _GooseDS(goose_root, keys=["lidar"])
     assert ds.timestamps is None
@@ -178,6 +209,7 @@ def test_is_synchronous(goose_root):
 
 class _RellisDS(ProfiledDataset):
     _profile = "rellis.yaml"
+
 
 @pytest.fixture
 def rellis_root(tmp_path):
@@ -193,8 +225,9 @@ def test_goose_derived_path_structure(goose_root):
     ds = _GooseDS(goose_root, keys=["lidar"])
     p = ds.derived_path(0, "trav_label", "npy")
     rel = p.relative_to(goose_root)
-    assert rel.parts[0] == "trav_label"   # modality replaced at idx=0
+    assert rel.parts[0] == "trav_label"  # modality replaced at idx=0
     assert rel.parts[-1] == "000000.npy"
+
 
 def test_kitti_derived_path_structure(kitti_root):
     ds = _KittiDS(kitti_root, keys=["lidar"])
@@ -205,6 +238,7 @@ def test_kitti_derived_path_structure(kitti_root):
     assert rel.parts[2] == "trav_label"
     assert rel.parts[-1] == "000000.npy"
 
+
 def test_rellis_derived_path_structure(rellis_root):
     ds = _RellisDS(rellis_root, keys=["lidar"])
     p = ds.derived_path(0, "trav_label", "npy")
@@ -214,6 +248,7 @@ def test_rellis_derived_path_structure(rellis_root):
     assert rel.parts[2] == "trav_label"
     assert rel.parts[-1] == "000000.npy"
 
+
 def test_goose_seq_root(goose_root):
     ds = _GooseDS(goose_root, keys=["lidar"])
     first_file = ds._files["lidar"][0]
@@ -221,12 +256,14 @@ def test_goose_seq_root(goose_root):
     # GOOSE: lidar/train/seq_a/000000.bin → _seq_depth=1 → seq_root = first_file.parent
     assert seq == first_file.parent
 
+
 def test_kitti_seq_root(kitti_root):
     ds = _KittiDS(kitti_root, keys=["lidar"])
     first_file = ds._files["lidar"][0]
     seq = ds._seq_root(first_file)
     # sequences/00/velodyne/000000.bin → _seq_depth=2 → seq_root = first_file.parent.parent
     assert seq == first_file.parent.parent
+
 
 def test_bootstrap_config_uses_profile(goose_root):
     ds = _GooseDS(goose_root, keys=["lidar", "labels"])
@@ -237,12 +274,12 @@ def test_bootstrap_config_uses_profile(goose_root):
     assert cfg["channels"]["labels"]["loader"] == "bin"
 
 
-import yaml
-
 def _write_apairo(directory: Path, key: str, loader: str) -> None:
     config = {
         "version": 1,
-        "channels": {key: {"kind": "preprocess", "loader": loader, "has_timestamps": False}},
+        "channels": {
+            key: {"kind": "preprocess", "loader": loader, "has_timestamps": False}
+        },
     }
     with open(directory / ".apairo", "w") as f:
         yaml.dump(config, f)
@@ -265,15 +302,18 @@ def test_derived_key_loaded(goose_root_with_derived):
     assert len(ds) == 6
     s = ds[0]
     assert "elevation_map" in s.data
-    assert isinstance(s.data["elevation_map"], torch.Tensor)
+    assert isinstance(s.data["elevation_map"], np.ndarray)
+
 
 def test_derived_only_raises(goose_root_with_derived):
     with pytest.raises(KeyError):
         _GooseDS(goose_root_with_derived, keys=["elevation_map"])
 
+
 def test_derived_without_apairo_raises(goose_root):
     with pytest.raises(KeyError):
         _GooseDS(goose_root, keys=["lidar", "elevation_map"])
+
 
 def test_derived_missing_files_raises(goose_root):
     _write_apairo(goose_root, "elevation_map", "npys")

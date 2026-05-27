@@ -1,5 +1,4 @@
 import numpy as np
-import torch
 import os
 
 from apairo.core import AbstractLoader
@@ -14,10 +13,9 @@ class BINLoader(AbstractLoader):
     def __len__(self):
         return len(self.files)
 
-    def __getitem__(self, idx) -> torch.Tensor:
+    def __getitem__(self, idx) -> np.ndarray:
         path = os.path.join(self.directory, self.files[idx])
-        pts = np.fromfile(path, dtype=np.float32).reshape(-1, 4)
-        return torch.from_numpy(pts)
+        return np.fromfile(path, dtype=np.float32).reshape(-1, 4)
 
     @property
     def shape(self):

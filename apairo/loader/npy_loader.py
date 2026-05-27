@@ -1,7 +1,6 @@
 from pathlib import Path
 from typing import Tuple
 import numpy as np
-import torch
 
 from apairo.core import AbstractLoader
 from apairo.core.utils.exceptions import FileExtensionError
@@ -15,12 +14,12 @@ class NPYLoader(AbstractLoader):
         npy_files = sorted(directory.glob("*.npy"))
         if not npy_files:
             raise FileExtensionError(f"No .npy file found in {directory}")
-        self.array: torch.Tensor = torch.from_numpy(np.load(npy_files[0]))
+        self.array: np.ndarray = np.load(npy_files[0])
 
     def __len__(self) -> int:
         return len(self.array)
 
-    def __getitem__(self, idx: int) -> torch.Tensor:
+    def __getitem__(self, idx: int) -> np.ndarray:
         return self.array[idx]
 
     @property

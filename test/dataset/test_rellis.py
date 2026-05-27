@@ -1,6 +1,5 @@
 import pytest
 import numpy as np
-import torch
 from pathlib import Path
 
 from apairo.dataset.rellis import Rellis3DDataset
@@ -45,8 +44,8 @@ def test_getitem_returns_sample(rellis_root):
     assert s.timestamp is None
     assert s.data["lidar"].shape == (N_POINTS, 4)
     assert s.data["labels"].shape == (N_POINTS,)
-    assert s.data["lidar"].dtype == torch.float32
-    assert s.data["labels"].dtype == torch.int64
+    assert s.data["lidar"].dtype == np.float32
+    assert s.data["labels"].dtype == np.int64
 
 
 def test_iter(rellis_root):
@@ -133,8 +132,12 @@ def rellis_root_derived(tmp_path):
         elev_dir = tmp_path / "Rellis-3D" / seq / "elevation_map"
         elev_dir.mkdir(parents=True)
         for i in range(N_FRAMES_DERIVED):
-            np.random.rand(N_POINTS, 4).astype(np.float32).tofile(bin_dir / f"{i:06d}.bin")
-            np.save(elev_dir / f"{i:06d}.npy", np.random.rand(N_ELEV).astype(np.float32))
+            np.random.rand(N_POINTS, 4).astype(np.float32).tofile(
+                bin_dir / f"{i:06d}.bin"
+            )
+            np.save(
+                elev_dir / f"{i:06d}.npy", np.random.rand(N_ELEV).astype(np.float32)
+            )
         _write_apairo(tmp_path / "Rellis-3D" / seq, "elevation_map", "npys")
     return tmp_path
 
@@ -144,7 +147,7 @@ def test_derived_key_loaded_from_apairo(rellis_root_derived):
     assert len(ds) == N_FRAMES_DERIVED * 2
     sample = ds[0]
     assert "elevation_map" in sample.data
-    assert isinstance(sample.data["elevation_map"], torch.Tensor)
+    assert isinstance(sample.data["elevation_map"], np.ndarray)
 
 
 def test_derived_key_without_apairo_raises(tmp_path):

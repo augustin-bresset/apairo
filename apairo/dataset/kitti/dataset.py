@@ -2,7 +2,6 @@ from __future__ import annotations
 from pathlib import Path
 from typing import List, Dict, Tuple
 import numpy as np
-import torch
 
 from apairo.utils.timestamps import get_end_of_time
 from apairo.loader import str_to_loader, loads_timestamps, load_profile
@@ -24,6 +23,7 @@ class KittiDataset(AbstractDataset):
         dataset_profile: YAML profile filename **or** absolute Path mapping keys
             to loader types.
     """
+
     synchronous: bool = False
 
     def __init__(
@@ -76,7 +76,9 @@ class KittiDataset(AbstractDataset):
             key: str_to_loader[self._profile[key]](self._files[key])
             for key in self._keys
         }
-        self.timestamps: Dict[str, np.ndarray] = loads_timestamps(self._keys, self._files)
+        self.timestamps: Dict[str, np.ndarray] = loads_timestamps(
+            self._keys, self._files
+        )
         self.end_of_time: float = get_end_of_time(self.timestamps) + 1.0
 
     def _init_timeline(self) -> None:

@@ -1,6 +1,5 @@
 import pytest
 import numpy as np
-import torch
 from pathlib import Path
 
 from apairo.dataset.goose import Goose3DDataset
@@ -47,8 +46,8 @@ def test_getitem_returns_sample(goose_root):
     assert s.timestamp is None
     assert s.data["lidar"].shape == (N_POINTS, 4)
     assert s.data["labels"].shape == (N_POINTS,)
-    assert s.data["lidar"].dtype == torch.float32
-    assert s.data["labels"].dtype == torch.int64
+    assert s.data["lidar"].dtype == np.float32
+    assert s.data["labels"].dtype == np.int64
 
 
 def test_iter(goose_root):
@@ -115,6 +114,7 @@ N_ELEV = 48
 
 def _write_apairo(root: Path, key: str, loader: str) -> None:
     import yaml
+
     config = {
         "version": 1,
         "channels": {
@@ -132,12 +132,14 @@ def goose_root_derived(tmp_path):
     # .apairo at root (registration happens at dataset root)
     for seq in ["seq_a", "seq_b"]:
         lidar_dir = tmp_path / "lidar" / "train" / seq
-        elev_dir  = tmp_path / "elevation_map" / "train" / seq
+        elev_dir = tmp_path / "elevation_map" / "train" / seq
         lidar_dir.mkdir(parents=True)
         elev_dir.mkdir(parents=True)
         for i in range(N_FRAMES_DERIVED):
             _make_bin(lidar_dir / f"{i:06d}.bin")
-            np.save(elev_dir / f"{i:06d}.npy", np.random.rand(N_ELEV).astype(np.float32))
+            np.save(
+                elev_dir / f"{i:06d}.npy", np.random.rand(N_ELEV).astype(np.float32)
+            )
     _write_apairo(tmp_path, "elevation_map", "npys")
     return tmp_path
 
@@ -147,7 +149,7 @@ def test_derived_key_loaded_from_apairo(goose_root_derived):
     assert len(ds) == N_FRAMES_DERIVED * 2
     sample = ds[0]
     assert "elevation_map" in sample.data
-    assert isinstance(sample.data["elevation_map"], torch.Tensor)
+    assert isinstance(sample.data["elevation_map"], np.ndarray)
 
 
 def test_derived_path_mirrors_modality_structure(goose_root_derived):
@@ -176,14 +178,14 @@ def test_derived_path_works_from_dataset_root(tmp_path):
     p = ds.derived_path(0, "trav_label", "npy")
     # Expect: tmp_path/train/trav_label/train/seq_a/000000.npy
     rel = p.relative_to(tmp_path)
-    assert rel.parts[1] == "trav_label"   # modality replaced at idx=1
-    assert rel.parts[0] == "train"        # split prefix preserved
-    assert rel.parts[2] == "train"        # sub-split preserved
+    assert rel.parts[1] == "trav_label"  # modality replaced at idx=1
+    assert rel.parts[0] == "train"  # split prefix preserved
+    assert rel.parts[2] == "train"  # sub-split preserved
 
 
 def test_derived_key_without_apairo_raises(tmp_path):
     lidar_dir = tmp_path / "lidar" / "train" / "seq_a"
-    elev_dir  = tmp_path / "elevation_map" / "train" / "seq_a"
+    elev_dir = tmp_path / "elevation_map" / "train" / "seq_a"
     lidar_dir.mkdir(parents=True)
     elev_dir.mkdir(parents=True)
     for i in range(2):

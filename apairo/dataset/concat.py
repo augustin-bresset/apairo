@@ -1,7 +1,7 @@
 from __future__ import annotations
+import functools
 from typing import List
 import numpy as np
-from torch.utils.data import Dataset
 
 from apairo.core import AbstractDataset
 from apairo.core.sample import Sample
@@ -55,8 +55,9 @@ class ConcatDataset(AbstractDataset):
         self._set_keys(list(keys))
         for ds in self.datasets:
             ds.keys = self._keys
+        self.__dict__.pop("timestamps", None)
 
-    @property
+    @functools.cached_property
     def timestamps(self) -> dict[str, np.ndarray] | None:
         """None for synchronous datasets, concatenated arrays for temporal ones."""
         if self.datasets[0].timestamps is None:
@@ -99,14 +100,3 @@ class ConcatDataset(AbstractDataset):
                 if self._iter_ds >= len(self.datasets):
                     raise
                 self._iter_inner = iter(self.datasets[self._iter_ds])
-
-
-class TorchConcatDataset(ConcatDataset, Dataset):
-    """Map-style PyTorch Dataset wrapping ConcatDataset.
-
-    .. deprecated::
-        Inherit from :class:`ConcatDataset` and :class:`torch.utils.data.Dataset`
-        directly — or pass a :class:`ConcatDataset` to ``DataLoader`` directly,
-        since ``DataLoader`` does not require ``Dataset`` inheritance.
-        This class will be removed in a future release.
-    """

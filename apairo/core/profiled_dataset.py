@@ -5,12 +5,25 @@ from typing import Optional
 import yaml
 
 import numpy as np
-import torch
 
 from apairo.core.synchronous_dataset import SynchronousDataset
 from apairo.core.configurable_dataset import ConfigurableDataset
 from apairo.core.sample import Sample
 from apairo.loader import DERIVED_LOADERS
+
+_NUMPY_DTYPE: dict[str, type] = {
+    "int8": np.int8,
+    "int16": np.int16,
+    "int32": np.int32,
+    "int64": np.int64,
+    "uint8": np.uint8,
+    "uint16": np.uint16,
+    "uint32": np.uint32,
+    "float16": np.float16,
+    "float32": np.float32,
+    "float64": np.float64,
+    "bool": np.bool_,
+}
 
 _PROFILES_DIR = Path(__file__).parent.parent / "dataset" / "profiles"
 
@@ -37,21 +50,24 @@ class ModalitySpec:
     loader: Optional[str] = None
     subpath: list[str] = field(default_factory=list)
     optional: bool = False
+    resolved_dtype: Optional[type] = field(default=None, compare=False, repr=False)
 
     @classmethod
     def from_dict(cls, key: str, d: dict) -> "ModalitySpec":
         ext = d["ext"]
         if not ext.startswith("."):
             ext = f".{ext}"
+        torch_dtype = d.get("torch_dtype")
         return cls(
             ext=ext,
             dtype=d["dtype"],
             reshape=d.get("reshape"),
             mask=d.get("mask"),
-            torch_dtype=d.get("torch_dtype"),
+            torch_dtype=torch_dtype,
             loader=d.get("loader"),
             subpath=d.get("subpath", []),
             optional=d.get("optional", False),
+            resolved_dtype=_NUMPY_DTYPE.get(torch_dtype) if torch_dtype else None,
         )
 
     def effective_subpath(self, key: str) -> list[str]:
@@ -94,8 +110,8 @@ class ProfiledDataset(SynchronousDataset, ConfigurableDataset):
 
             ds = MyDataset("/data/my_dataset", keys=["lidar", "labels"], split="train")
             sample = ds[0]
-            # sample.data["lidar"]  → torch.Tensor
-            # sample.data["labels"] → torch.Tensor
+            # sample.data["lidar"]  → np.ndarray
+            # sample.data["labels"] → np.ndarray
 
     Attributes:
         available_keys: Frozenset of key names declared in the profile.
@@ -286,8 +302,7 @@ class ProfiledDataset(SynchronousDataset, ConfigurableDataset):
                     if spec.reshape:
                         arr = arr.reshape(spec.reshape)
                     if spec.mask is not None:
-                        arr = arr & spec.mask
-                    t = torch.from_numpy(np.ascontiguousarray(arr))
+                        arr &= spec.mask
                 else:
                     loader_name = spec.loader or _EXT_TO_LOADER.get(spec.ext)
                     if loader_name is None or loader_name not in DERIVED_LOADERS:
@@ -295,14 +310,14 @@ class ProfiledDataset(SynchronousDataset, ConfigurableDataset):
                             f"No loader for extension '{spec.ext}' on key '{key}'. "
                             f"Set 'loader' in the profile or use a supported extension."
                         )
-                    t = DERIVED_LOADERS[loader_name](path)
+                    arr = DERIVED_LOADERS[loader_name](path)
                     if spec.reshape:
-                        t = t.reshape(spec.reshape)
+                        arr = arr.reshape(spec.reshape)
                     if spec.mask is not None:
-                        t = t & spec.mask
-                if spec.torch_dtype is not None:
-                    t = t.to(getattr(torch, spec.torch_dtype))
-                data[key] = t
+                        arr &= spec.mask
+                if spec.resolved_dtype is not None:
+                    arr = arr.astype(spec.resolved_dtype)
+                data[key] = arr
             else:
                 ext = self._derived_loaders[key]
                 data[key] = DERIVED_LOADERS[ext](path)
