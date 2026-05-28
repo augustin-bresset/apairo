@@ -9,10 +9,7 @@ import numpy as np
 from apairo.core.synchronous_dataset import SynchronousDataset
 from apairo.core.configurable_dataset import ConfigurableDataset
 from apairo.core.sample import Sample
-from apairo.loader import DERIVED_LOADERS, str_to_loader
-
-# Loaders that consume a single sequence-level file (one row = one frame).
-_SEQ_FILE_LOADERS: frozenset[str] = frozenset({"txt_rows"})
+from apairo.loader import DERIVED_LOADERS, TXTLoader
 
 _NUMPY_DTYPE: dict[str, type] = {
     "int8": np.int8,
@@ -39,14 +36,16 @@ _EXT_TO_LOADER: dict[str, str] = {
     ".pt": "pt",
 }
 
-# Extensions loaded via np.fromfile — raw binary, dtype/reshape/mask are meaningful
 _BINARY_EXTS: frozenset[str] = frozenset({".bin", ".label"})
+
+# Loader names that map to a single sequence-level file (one file, N rows).
+_SEQUENCE_LOADERS: frozenset[str] = frozenset({"txt_rows"})
 
 
 @dataclass
 class ModalitySpec:
     ext: str
-    dtype: str
+    dtype: Optional[str] = None
     reshape: Optional[list] = None
     mask: Optional[int] = None
     torch_dtype: Optional[str] = None
@@ -57,13 +56,13 @@ class ModalitySpec:
 
     @classmethod
     def from_dict(cls, key: str, d: dict) -> "ModalitySpec":
-        ext = d["ext"]
-        if not ext.startswith("."):
+        ext = d.get("ext", "")
+        if ext and not ext.startswith("."):
             ext = f".{ext}"
         torch_dtype = d.get("torch_dtype")
         return cls(
             ext=ext,
-            dtype=d.get("dtype", "float64"),
+            dtype=d.get("dtype"),
             reshape=d.get("reshape"),
             mask=d.get("mask"),
             torch_dtype=torch_dtype,
@@ -72,6 +71,10 @@ class ModalitySpec:
             optional=d.get("optional", False),
             resolved_dtype=_NUMPY_DTYPE.get(torch_dtype) if torch_dtype else None,
         )
+
+    @property
+    def is_sequence_file(self) -> bool:
+        return self.loader in _SEQUENCE_LOADERS
 
     def effective_subpath(self, key: str) -> list[str]:
         return self.subpath if self.subpath else [key]
@@ -92,6 +95,42 @@ def _parse_layers(raw: list) -> list[LayerSpec]:
             k, v = next(iter(item.items()))
             result.append(LayerSpec(type=k, value=v))
     return result
+
+
+class _PerFrameLoader:
+    """Wraps a sorted list of per-frame file paths and handles loading."""
+
+    def __init__(self, paths: list[Path], spec: ModalitySpec) -> None:
+        self.paths = paths
+        self._spec = spec
+
+    def __len__(self) -> int:
+        return len(self.paths)
+
+    def __getitem__(self, idx: int) -> np.ndarray:
+        path = self.paths[idx]
+        spec = self._spec
+        if spec.ext in _BINARY_EXTS:
+            arr = np.fromfile(path, dtype=np.dtype(spec.dtype))
+            if spec.reshape:
+                arr = arr.reshape(spec.reshape)
+            if spec.mask is not None:
+                arr &= spec.mask
+        else:
+            loader_name = spec.loader or _EXT_TO_LOADER.get(spec.ext)
+            if loader_name is None or loader_name not in DERIVED_LOADERS:
+                raise ValueError(
+                    f"No loader for extension '{spec.ext}'. "
+                    f"Set 'loader' in the profile or use a supported extension."
+                )
+            arr = DERIVED_LOADERS[loader_name](path)
+            if spec.reshape:
+                arr = arr.reshape(spec.reshape)
+            if spec.mask is not None:
+                arr &= spec.mask
+        if spec.resolved_dtype is not None:
+            arr = arr.astype(spec.resolved_dtype)
+        return arr
 
 
 class ProfiledDataset(SynchronousDataset, ConfigurableDataset):
@@ -176,46 +215,60 @@ class ProfiledDataset(SynchronousDataset, ConfigurableDataset):
         derived_keys = [k for k in keys if k not in self._modalities]
 
         self._set_keys(list(keys))
-        self._files: dict[str, list[Path]] = {}
-        self._seq_loaders: dict[str, list] = {}   # key → [loader per seq-file]
-        self._seq_breaks: dict[str, list[int]] = {}  # key → cumulative frame counts
+        self._files: dict[
+            str, list[Path]
+        ] = {}  # per-frame native keys only (for derived_path)
+        self._loaders: dict[str, _PerFrameLoader | TXTLoader] = {}
+        self._ref_key: str | None = None
 
-        ref_key: str | None = None
         for key in native_keys:
-            files = self._discover_native(key)
-            if not files and not self._modalities[key].optional:
-                raise FileNotFoundError(
-                    f"Key '{key}' declared in profile but no files found under {self._root}."
-                )
-            self._files[key] = files
-            if ref_key is None and files:
-                ref_key = key
+            spec = self._modalities[key]
+            if spec.is_sequence_file:
+                paths = self._discover_sequence_files(key)
+                if not paths and not spec.optional:
+                    raise FileNotFoundError(
+                        f"Key '{key}': no '{self._mapped_name(key)}{spec.ext}' "
+                        f"files found under {self._root}."
+                    )
+                if paths:
+                    self._loaders[key] = TXTLoader(paths, spec.reshape)
+            else:
+                paths = self._discover_native(key)
+                if not paths and not spec.optional:
+                    raise FileNotFoundError(
+                        f"Key '{key}' declared in profile but no files found under {self._root}."
+                    )
+                if paths:
+                    self._files[key] = paths
+                    self._loaders[key] = _PerFrameLoader(paths, spec)
+                    if self._ref_key is None:
+                        self._ref_key = key
 
-        lengths = {k: len(v) for k, v in self._files.items() if k in self._modalities}
-        if len(set(lengths.values())) > 1:
-            raise ValueError(f"Mismatched file counts per key: {lengths}")
+        # Count check via loaders — each loader is the authority on its own length.
+        frame_counts = {k: len(v) for k, v in self._loaders.items()}
+        if len(set(frame_counts.values())) > 1:
+            raise ValueError(f"Mismatched frame counts per key: {frame_counts}")
 
-        # Detect modality_idx dynamically from first discovered file
+        # Detect modality_idx dynamically from first discovered per-frame file.
         self._modality_idx: int = self._modality_layer_idx
-        if ref_key and self._files[ref_key]:
-            first = self._files[ref_key][0]
+        if self._ref_key and self._files.get(self._ref_key):
+            first = self._files[self._ref_key][0]
             rel_parts = first.relative_to(self._root).parts
-            mapped = self._mapped_name(ref_key)
+            mapped = self._mapped_name(self._ref_key)
             if mapped in rel_parts:
                 self._modality_idx = rel_parts.index(mapped)
 
-        self._derived_loaders: dict[str, str] = {}
         if derived_keys:
-            if ref_key is not None:
-                for key in derived_keys:
-                    ext = self._get_derived_ext(key)
-                    self._derived_loaders[key] = ext
-                    self._files[key] = self._discover_derived(key, ext)
-            else:
-                for key in derived_keys:
-                    ext = self._get_derived_ext(key)
-                    self._derived_loaders[key] = ext
-                    self._files[key] = self._discover_derived_direct(key, ext)
+            discover = (
+                self._discover_derived
+                if self._ref_key is not None
+                else self._discover_derived_direct
+            )
+            for key in derived_keys:
+                ext = self._get_derived_ext(key)
+                paths = discover(key, ext)
+                spec = ModalitySpec(ext=f".{ext}", loader=ext)
+                self._loaders[key] = _PerFrameLoader(paths, spec)
 
     def _seq_root(self, path: Path) -> Path:
         d = path
@@ -224,12 +277,11 @@ class ProfiledDataset(SynchronousDataset, ConfigurableDataset):
         return d
 
     def derived_path(self, idx: int, key: str, ext: str) -> Path:
-        ref = next(iter(self._files.values()))[idx]
+        ref = self._files[self._ref_key][idx]
         rel = ref.relative_to(self._root)
         parts = list(rel.parts)
-        ref_key = next(iter(self._files))
-        src_spec = self._modalities.get(ref_key)
-        n = len(src_spec.effective_subpath(ref_key)) if src_spec else 1
+        src_spec = self._modalities.get(self._ref_key)
+        n = len(src_spec.effective_subpath(self._ref_key)) if src_spec else 1
         parts[self._modality_idx : self._modality_idx + n] = [key]
         parts[-1] = f"{ref.stem}.{ext}"
         return self._root / Path(*parts)
@@ -237,6 +289,8 @@ class ProfiledDataset(SynchronousDataset, ConfigurableDataset):
     def _is_present(self, root_dir: Path, key: str) -> bool:
         spec = self._modalities[key]
         mapped = self._mapped_name(key)
+        if spec.is_sequence_file:
+            return any(root_dir.glob(f"**/{mapped}{spec.ext}"))
         return any(root_dir.glob(f"{mapped}/**/*{spec.ext}"))
 
     def _bootstrap_config(self, root_dir: Path) -> dict:
@@ -254,12 +308,22 @@ class ProfiledDataset(SynchronousDataset, ConfigurableDataset):
             return layer.value.get(key, key)
         return key
 
-    def _discover_derived_direct(self, key: str, ext: str) -> list[Path]:
-        """Glob derived files without a native-key anchor.
+    def _discover_sequence_files(self, key: str) -> list[Path]:
+        """Find sequence-level files (one per sequence, not per frame)."""
+        spec = self._modalities[key]
+        fixed_parts = [layer.value for layer in self._layers if layer.type == "fixed"]
+        mapped = self._mapped_name(key)
 
-        Used when only derived keys are requested and no native files are loaded.
-        Applies the split filter the same way as _discover_native.
-        """
+        if fixed_parts:
+            prefix = Path(*fixed_parts)
+            pattern = str(prefix / f"**/{mapped}{spec.ext}")
+        else:
+            pattern = f"**/{mapped}{spec.ext}"
+
+        return sorted(self._root.glob(pattern))
+
+    def _discover_derived_direct(self, key: str, ext: str) -> list[Path]:
+        """Glob derived files without a native-key anchor."""
         files = sorted(self._root.glob(f"**/{key}/**/*.{ext}"))
         if self._split_filter:
             files = [
@@ -278,35 +342,6 @@ class ProfiledDataset(SynchronousDataset, ConfigurableDataset):
         spec = self._modalities[key]
         fixed_parts = [layer.value for layer in self._layers if layer.type == "fixed"]
         mapped = self._mapped_name(key)
-
-        if spec.loader in _SEQ_FILE_LOADERS:
-            # Sequence-level file: one file per sequence directory, one row per frame.
-            # Discover directories that contain the file, mirroring NPYLoader's pattern.
-            if fixed_parts:
-                prefix = Path(*fixed_parts)
-                pattern = str(prefix / "**" / f"{mapped}{spec.ext}")
-            else:
-                pattern = f"**/{mapped}{spec.ext}"
-            seq_files = sorted(self._root.glob(pattern))
-            if self._split_filter:
-                split_layer = next(
-                    (l for l in self._layers if l.type == "split"), None
-                )
-                if split_layer is not None:
-                    seq_files = [
-                        f for f in seq_files
-                        if self._split_filter in f.relative_to(self._root).parts
-                    ]
-            loader_cls = str_to_loader[spec.loader]
-            loaders = [loader_cls(f) for f in seq_files]
-            breaks = [0] + list(np.cumsum([len(l) for l in loaders]))
-            self._seq_loaders[key] = loaders
-            self._seq_breaks[key] = breaks
-            # Expand to flat per-frame list so length checks stay consistent.
-            paths: list[Path] = []
-            for f, loader in zip(seq_files, loaders):
-                paths.extend([f] * len(loader))
-            return paths
 
         if fixed_parts:
             prefix = Path(*fixed_parts)
@@ -329,53 +364,14 @@ class ProfiledDataset(SynchronousDataset, ConfigurableDataset):
         return files
 
     def __len__(self) -> int:
-        if not self._files:
+        if not self._loaders:
             return 0
-        return len(next(iter(self._files.values())))
+        return len(next(iter(self._loaders.values())))
 
     def __getitem__(self, idx: int) -> Sample:
         if not 0 <= idx < len(self):
             raise IndexError(f"Index {idx} out of range [0, {len(self)})")
-        data: dict = {}
-        for key in self._keys:
-            path = self._files[key][idx]
-            if key in self._modalities:
-                spec = self._modalities[key]
-                if key in self._seq_loaders:
-                    breaks = self._seq_breaks[key]
-                    seq_idx = int(np.searchsorted(breaks, idx + 1)) - 1
-                    local_idx = idx - breaks[seq_idx]
-                    arr = self._seq_loaders[key][seq_idx][local_idx].copy()
-                    if spec.reshape:
-                        arr = arr.reshape(spec.reshape)
-                    if spec.resolved_dtype is not None:
-                        arr = arr.astype(spec.resolved_dtype)
-                    data[key] = arr
-                elif spec.ext in _BINARY_EXTS:
-                    arr = np.fromfile(path, dtype=np.dtype(spec.dtype))
-                    if spec.reshape:
-                        arr = arr.reshape(spec.reshape)
-                    if spec.mask is not None:
-                        arr &= spec.mask
-                else:
-                    loader_name = spec.loader or _EXT_TO_LOADER.get(spec.ext)
-                    if loader_name is None or loader_name not in DERIVED_LOADERS:
-                        raise ValueError(
-                            f"No loader for extension '{spec.ext}' on key '{key}'. "
-                            f"Set 'loader' in the profile or use a supported extension."
-                        )
-                    arr = DERIVED_LOADERS[loader_name](path)
-                    if spec.reshape:
-                        arr = arr.reshape(spec.reshape)
-                    if spec.mask is not None:
-                        arr &= spec.mask
-                if spec.resolved_dtype is not None:
-                    arr = arr.astype(spec.resolved_dtype)
-                data[key] = arr
-            else:
-                ext = self._derived_loaders[key]
-                data[key] = DERIVED_LOADERS[ext](path)
-        return Sample(data=data)
+        return Sample(data={key: self._loaders[key][idx] for key in self._keys})
 
     def __iter__(self):
         self._iter_pos = 0

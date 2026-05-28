@@ -2,7 +2,7 @@ from .img_loader import IMGLoader
 from .npy_loader import NPYLoader
 from .npys_loader import NPYSLoader
 from .bin_loader import BINLoader
-from .txt_rows_loader import TXTRowsLoader
+from .txt_loader import TXTLoader
 import os
 from pathlib import Path
 from typing import Callable
@@ -16,7 +16,6 @@ str_to_loader = {
     "npy": NPYLoader,
     "npys_img": NPYSLoader,
     "bin": BINLoader,
-    "txt_rows": TXTRowsLoader,
 }
 
 
@@ -43,7 +42,7 @@ __all__ = [
     "NPYLoader",
     "NPYSLoader",
     "BINLoader",
-    "TXTRowsLoader",
+    "TXTLoader",
     "str_to_loader",
     "DERIVED_LOADERS",
     "loads_timestamps",
