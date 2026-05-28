@@ -51,6 +51,7 @@ class ModalitySpec:
     loader: Optional[str] = None
     subpath: list[str] = field(default_factory=list)
     optional: bool = False
+    stem_suffix: Optional[str] = None
     resolved_dtype: Optional[type] = field(default=None, compare=False, repr=False)
 
     @classmethod
@@ -68,6 +69,7 @@ class ModalitySpec:
             loader=d.get("loader"),
             subpath=d.get("subpath", []),
             optional=d.get("optional", False),
+            stem_suffix=d.get("stem_suffix"),
             resolved_dtype=_NUMPY_DTYPE.get(torch_dtype) if torch_dtype else None,
         )
 
@@ -187,9 +189,16 @@ class ProfiledDataset(SynchronousDataset, ConfigurableDataset):
             if ref_key is None and files:
                 ref_key = key
 
-        lengths = {k: len(v) for k, v in self._files.items() if k in self._modalities}
-        if len(set(lengths.values())) > 1:
-            raise ValueError(f"Mismatched file counts per key: {lengths}")
+        if any(
+            self._modalities[k].stem_suffix for k in native_keys if k in self._files
+        ):
+            self._align_files(native_keys)
+        else:
+            lengths = {
+                k: len(v) for k, v in self._files.items() if k in self._modalities
+            }
+            if len(set(lengths.values())) > 1:
+                raise ValueError(f"Mismatched file counts per key: {lengths}")
 
         # Detect modality_idx dynamically from first discovered file
         self._modality_idx: int = self._modality_layer_idx
@@ -258,6 +267,52 @@ class ProfiledDataset(SynchronousDataset, ConfigurableDataset):
         if isinstance(layer.value, dict):
             return layer.value.get(key, key)
         return key
+
+    def _align_files(self, native_keys: list[str]) -> None:
+        """Intersect files across modalities using stem_suffix to strip modality-specific suffixes.
+
+        Keeps only frames where every loaded modality has a matching file.
+        The common key encodes both the sub-path after the modality directory and
+        the base stem (with stem_suffix stripped), so frames from different sequences
+        never collide.
+        """
+
+        def _common_key(path: Path, key: str, spec: ModalitySpec) -> str:
+            mapped = self._mapped_name(key)
+            rel = path.relative_to(self._root)
+            parts = list(rel.parts)
+            try:
+                mod_idx = parts.index(mapped)
+            except ValueError:
+                mod_idx = 0
+            sub_parts = parts[mod_idx + 1 : -1]
+            stem = path.stem
+            if spec.stem_suffix and stem.endswith(spec.stem_suffix):
+                stem = stem[: -len(spec.stem_suffix)]
+            return str(Path(*sub_parts) / stem) if sub_parts else stem
+
+        key_to_files: dict[str, dict[str, Path]] = {}
+        for key in native_keys:
+            if key not in self._files:
+                continue
+            spec = self._modalities[key]
+            for path in self._files[key]:
+                ck = _common_key(path, key, spec)
+                key_to_files.setdefault(ck, {})[key] = path
+
+        common = sorted(
+            ck for ck, d in key_to_files.items() if len(d) == len(native_keys)
+        )
+
+        if not common:
+            raise FileNotFoundError(
+                f"No frames found where all modalities ({native_keys}) match. "
+                f"Check that the dataset is complete and stem_suffix values are correct."
+            )
+
+        for key in native_keys:
+            if key in self._files:
+                self._files[key] = [key_to_files[ck][key] for ck in common]
 
     def _discover_derived_direct(self, key: str, ext: str) -> list[Path]:
         """Glob derived files without a native-key anchor.

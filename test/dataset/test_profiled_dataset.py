@@ -141,14 +141,15 @@ def test_invalid_key_raises(goose_root):
         _GooseDS(goose_root, keys=["nonexistent"])
 
 
-def test_mismatched_counts_raises(tmp_path):
+def test_partial_labels_aligned(tmp_path):
+    # lidar has 2 frames, labels only 1 — dataset yields 1 matched frame
     (tmp_path / "lidar" / "train" / "seq_a").mkdir(parents=True)
     (tmp_path / "labels" / "train" / "seq_a").mkdir(parents=True)
-    _make_bin(tmp_path / "lidar" / "train" / "seq_a" / "000000.bin")
-    _make_bin(tmp_path / "lidar" / "train" / "seq_a" / "000001.bin")
-    _make_label(tmp_path / "labels" / "train" / "seq_a" / "000000.label")
-    with pytest.raises(ValueError):
-        _GooseDS(tmp_path, keys=["lidar", "labels"])
+    _make_bin(tmp_path / "lidar" / "train" / "seq_a" / "000000_vls128.bin")
+    _make_bin(tmp_path / "lidar" / "train" / "seq_a" / "000001_vls128.bin")
+    _make_label(tmp_path / "labels" / "train" / "seq_a" / "000000_goose.label")
+    ds = _GooseDS(tmp_path, keys=["lidar", "labels"])
+    assert len(ds) == 1
 
 
 def test_missing_native_key_raises(tmp_path):
