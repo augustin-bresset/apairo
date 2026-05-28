@@ -92,19 +92,6 @@ def test_is_synchronous(goose_root):
     assert ds.is_synchronous is True
 
 
-def test_partial_labels_aligned_by_stem(tmp_path):
-    # lidar has 2 frames, labels only covers the first — dataset should yield 1 frame
-    lidar_dir = tmp_path / "lidar" / "train" / "seq"
-    label_dir = tmp_path / "labels" / "train" / "seq"
-    lidar_dir.mkdir(parents=True)
-    label_dir.mkdir(parents=True)
-    _make_bin(lidar_dir / "000000_vls128.bin")
-    _make_bin(lidar_dir / "000001_vls128.bin")
-    _make_label(label_dir / "000000_goose.label")
-    ds = Goose3DDataset(tmp_path, keys=["lidar", "labels"])
-    assert len(ds) == 1
-
-
 # ---------------------------------------------------------------------------
 # Derived key tests
 # ---------------------------------------------------------------------------

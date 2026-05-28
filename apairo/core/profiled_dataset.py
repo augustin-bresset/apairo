@@ -2,7 +2,6 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Optional
-import re
 import yaml
 
 import numpy as np
@@ -52,8 +51,6 @@ class ModalitySpec:
     loader: Optional[str] = None
     subpath: list[str] = field(default_factory=list)
     optional: bool = False
-    frame_id_pattern: Optional[str] = None
-    _frame_id_re: Optional[re.Pattern] = field(default=None, compare=False, repr=False)
     resolved_dtype: Optional[type] = field(default=None, compare=False, repr=False)
 
     @classmethod
@@ -62,7 +59,6 @@ class ModalitySpec:
         if not ext.startswith("."):
             ext = f".{ext}"
         torch_dtype = d.get("torch_dtype")
-        pattern = d.get("frame_id_pattern")
         return cls(
             ext=ext,
             dtype=d["dtype"],
@@ -72,23 +68,8 @@ class ModalitySpec:
             loader=d.get("loader"),
             subpath=d.get("subpath", []),
             optional=d.get("optional", False),
-            frame_id_pattern=pattern,
-            _frame_id_re=re.compile(pattern) if pattern else None,
             resolved_dtype=_NUMPY_DTYPE.get(torch_dtype) if torch_dtype else None,
         )
-
-    def extract_frame_id(self, stem: str) -> str:
-        """Return the frame ID extracted from a file stem.
-
-        If frame_id_pattern is set and matches, returns group 1.
-        Falls back to the full stem when no pattern is configured or when
-        the pattern does not match (e.g. files without the expected suffix).
-        """
-        if self._frame_id_re is not None:
-            m = self._frame_id_re.match(stem)
-            if m is not None:
-                return m.group(1)
-        return stem
 
     def effective_subpath(self, key: str) -> list[str]:
         return self.subpath if self.subpath else [key]
@@ -206,18 +187,9 @@ class ProfiledDataset(SynchronousDataset, ConfigurableDataset):
             if ref_key is None and files:
                 ref_key = key
 
-        if any(
-            self._modalities[k].frame_id_pattern
-            for k in native_keys
-            if k in self._files
-        ):
-            self._align_files(native_keys)
-        else:
-            lengths = {
-                k: len(v) for k, v in self._files.items() if k in self._modalities
-            }
-            if len(set(lengths.values())) > 1:
-                raise ValueError(f"Mismatched file counts per key: {lengths}")
+        lengths = {k: len(v) for k, v in self._files.items() if k in self._modalities}
+        if len(set(lengths.values())) > 1:
+            raise ValueError(f"Mismatched file counts per key: {lengths}")
 
         # Detect modality_idx dynamically from first discovered file
         self._modality_idx: int = self._modality_layer_idx
@@ -286,65 +258,6 @@ class ProfiledDataset(SynchronousDataset, ConfigurableDataset):
         if isinstance(layer.value, dict):
             return layer.value.get(key, key)
         return key
-
-    def _align_files(self, native_keys: list[str]) -> None:
-        """Intersect files across modalities by matching their extracted frame IDs.
-
-        Keeps only frames where every loaded modality has a matching file.
-        The common key encodes both the sub-path after the modality directory and
-        the frame ID (extracted via frame_id_pattern), so frames from different
-        sequences never collide.
-        """
-
-        def _common_key(path: Path, key: str, spec: ModalitySpec) -> str:
-            mapped = self._mapped_name(key)
-            rel = path.relative_to(self._root)
-            parts = list(rel.parts)
-            try:
-                mod_idx = parts.index(mapped)
-            except ValueError:
-                mod_idx = 0
-            sub_parts = parts[mod_idx + 1 : -1]
-            frame_id = spec.extract_frame_id(path.stem)
-            return str(Path(*sub_parts) / frame_id) if sub_parts else frame_id
-
-        key_to_files: dict[str, dict[str, Path]] = {}
-        for key in native_keys:
-            if key not in self._files:
-                continue
-            spec = self._modalities[key]
-            for path in self._files[key]:
-                ck = _common_key(path, key, spec)
-                key_to_files.setdefault(ck, {})[key] = path
-
-        common = sorted(
-            ck for ck, d in key_to_files.items() if len(d) == len(native_keys)
-        )
-
-        if not common:
-            lines = [
-                f"No frames found where all modalities ({native_keys}) match.",
-                "Check that the dataset is complete and frame_id_pattern values are correct.",
-                "",
-            ]
-            for key in native_keys:
-                spec = self._modalities[key]
-                files = self._files.get(key, [])
-                sample_ids = [_common_key(p, key, spec) for p in files[:5]]
-                lines.append(
-                    f"  {key!r}: {len(files)} file(s) found"
-                    + (f", first frame IDs: {sample_ids}" if sample_ids else "")
-                    + (
-                        f"  [frame_id_pattern={spec.frame_id_pattern!r}]"
-                        if spec.frame_id_pattern
-                        else ""
-                    )
-                )
-            raise FileNotFoundError("\n".join(lines))
-
-        for key in native_keys:
-            if key in self._files:
-                self._files[key] = [key_to_files[ck][key] for ck in common]
 
     def _discover_derived_direct(self, key: str, ext: str) -> list[Path]:
         """Glob derived files without a native-key anchor.

@@ -7,13 +7,10 @@ outputs
 *.npy
 *.ply
 
+.*/
 .env
-.venv
-.claude/
 build/
 
-apairo.egg-info
-**.egg-info
 **.egg-info**
 
 

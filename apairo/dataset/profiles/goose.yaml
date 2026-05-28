@@ -8,9 +8,7 @@ modalities:
     ext: .bin
     dtype: float32
     reshape: [-1, 4]
-    frame_id_pattern: "^(.+)_vls128$"
   labels:
     ext: .label
     dtype: int32
     torch_dtype: int64
-    frame_id_pattern: "^(.+)_goose$"
