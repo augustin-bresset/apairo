@@ -1,7 +1,10 @@
 from __future__ import annotations
 from pathlib import Path
-from typing import List, Optional
+from typing import TYPE_CHECKING, List, Optional
 import numpy as np
+
+if TYPE_CHECKING:
+    from apairo.core.sequence_view import SequenceView
 
 from apairo.loader import str_to_loader, loads_timestamps, load_profile
 from apairo.utils.files import get_files
@@ -163,6 +166,28 @@ class TartanKittiDataset(KittiDataset, ConfigurableDataset):
             )
         return self._sequences
 
+    @property
+    def sequence_ids(self) -> list[str]:
+        """Sequence directory names, in discovery order."""
+        if not self._is_root:
+            raise AttributeError(
+                "'sequence_ids' is only available on root-level datasets."
+            )
+        return [seq._sequence_dir.name for seq in self._sequences]
+
+    def sequence(self, seq_id: str) -> "SequenceView":
+        """Return a :class:`~apairo.core.sequence_view.SequenceView` for *seq_id*."""
+        if not self._is_root:
+            raise AttributeError(
+                "'sequence()' is only available on root-level datasets."
+            )
+        from apairo.core.sequence_view import SequenceView
+
+        for seq in self._sequences:
+            if seq._sequence_dir.name == seq_id:
+                return SequenceView(seq, range(len(seq)), seq_id)
+        raise KeyError(f"Sequence '{seq_id}' not found. Available: {self.sequence_ids}")
+
     # ---------------------------------------------------------------- keys
 
     @property
@@ -203,7 +228,10 @@ class TartanKittiDataset(KittiDataset, ConfigurableDataset):
             raise RuntimeError("No keys loaded. Set ds.keys = [...] first.")
         return super().__len__()
 
-    def __getitem__(self, idx: int):
+    def __getitem__(self, idx):
+        if isinstance(idx, tuple):
+            seq_id, local_idx = idx
+            return self.sequence(seq_id)[local_idx]
         if self._is_root:
             if not hasattr(self, "_cumulative_lengths"):
                 raise RuntimeError("No keys loaded. Set ds.keys = [...] first.")

@@ -3,6 +3,7 @@ from .abstract_dataset import AbstractDataset
 from .synchronous_dataset import SynchronousDataset
 from .configurable_dataset import ConfigurableDataset
 from .sample import Sample
+from .sequence_view import SequenceView
 
 from . import utils
 
@@ -12,5 +13,6 @@ __all__ = [
     "SynchronousDataset",
     "ConfigurableDataset",
     "Sample",
+    "SequenceView",
     "utils",
 ]

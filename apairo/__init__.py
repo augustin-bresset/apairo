@@ -11,6 +11,7 @@ from apairo.dataset.kitti import KittiDataset
 from apairo.dataset.tartan_kitti import TartanKittiDataset
 from apairo.dataset.concat import ConcatDataset
 from apairo.dataset import split_sequences
+from apairo.core.sequence_view import SequenceView
 from apairo.dataset.semantic_kitti import SemanticKittiDataset
 from apairo.dataset.rellis import Rellis3DDataset
 from apairo.dataset.goose import Goose3DDataset
@@ -33,6 +34,7 @@ __all__ = [
     "TartanKittiDataset",
     "ConcatDataset",
     "split_sequences",
+    "SequenceView",
     "SemanticKittiDataset",
     "Rellis3DDataset",
     "Goose3DDataset",

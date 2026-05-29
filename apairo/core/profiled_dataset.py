@@ -1,8 +1,11 @@
 from __future__ import annotations
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Optional
+from typing import TYPE_CHECKING, Optional
 import yaml
+
+if TYPE_CHECKING:
+    from apairo.core.sequence_view import SequenceView
 
 import numpy as np
 
@@ -274,6 +277,13 @@ class ProfiledDataset(SynchronousDataset, ConfigurableDataset):
         # so _keys stays consistent with what __getitem__ can actually serve.
         self._set_keys([k for k in keys if k in self._loaders])
 
+        # Build sequence groups: seq_name -> sorted list of global frame indices.
+        self._seq_groups: dict[str, list[int]] = {}
+        if self._ref_key and self._files.get(self._ref_key):
+            for i, path in enumerate(self._files[self._ref_key]):
+                seq_name = self._seq_root(path).name
+                self._seq_groups.setdefault(seq_name, []).append(i)
+
     def _seq_root(self, path: Path) -> Path:
         d = path
         for _ in range(self._seq_depth):
@@ -372,7 +382,23 @@ class ProfiledDataset(SynchronousDataset, ConfigurableDataset):
             return 0
         return len(next(iter(self._loaders.values())))
 
-    def __getitem__(self, idx: int) -> Sample:
+    @property
+    def sequence_ids(self) -> list[str]:
+        return list(self._seq_groups.keys())
+
+    def sequence(self, seq_id: str) -> "SequenceView":
+        if seq_id not in self._seq_groups:
+            raise KeyError(
+                f"Sequence '{seq_id}' not found. " f"Available: {self.sequence_ids}"
+            )
+        from apairo.core.sequence_view import SequenceView
+
+        return SequenceView(self, self._seq_groups[seq_id], seq_id)
+
+    def __getitem__(self, idx) -> Sample:
+        if isinstance(idx, tuple):
+            seq_id, local_idx = idx
+            return self.sequence(seq_id)[local_idx]
         if not 0 <= idx < len(self):
             raise IndexError(f"Index {idx} out of range [0, {len(self)})")
         return Sample(data={key: self._loaders[key][idx] for key in self._keys})
