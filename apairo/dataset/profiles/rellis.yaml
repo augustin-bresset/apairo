@@ -15,5 +15,6 @@ modalities:
     torch_dtype: int64
   poses:
     ext: .txt
-    dtype: float32
+    loader: txt_rows
     reshape: [3, 4]
+    optional: true

@@ -9,7 +9,10 @@ import numpy as np
 from apairo.core.synchronous_dataset import SynchronousDataset
 from apairo.core.configurable_dataset import ConfigurableDataset
 from apairo.core.sample import Sample
-from apairo.loader import DERIVED_LOADERS
+from apairo.loader import DERIVED_LOADERS, str_to_loader
+
+# Loaders that consume a single sequence-level file (one row = one frame).
+_SEQ_FILE_LOADERS: frozenset[str] = frozenset({"txt_rows"})
 
 _NUMPY_DTYPE: dict[str, type] = {
     "int8": np.int8,
@@ -60,7 +63,7 @@ class ModalitySpec:
         torch_dtype = d.get("torch_dtype")
         return cls(
             ext=ext,
-            dtype=d["dtype"],
+            dtype=d.get("dtype", "float64"),
             reshape=d.get("reshape"),
             mask=d.get("mask"),
             torch_dtype=torch_dtype,
@@ -174,6 +177,8 @@ class ProfiledDataset(SynchronousDataset, ConfigurableDataset):
 
         self._set_keys(list(keys))
         self._files: dict[str, list[Path]] = {}
+        self._seq_loaders: dict[str, list] = {}   # key → [loader per seq-file]
+        self._seq_breaks: dict[str, list[int]] = {}  # key → cumulative frame counts
 
         ref_key: str | None = None
         for key in native_keys:
@@ -274,6 +279,35 @@ class ProfiledDataset(SynchronousDataset, ConfigurableDataset):
         fixed_parts = [layer.value for layer in self._layers if layer.type == "fixed"]
         mapped = self._mapped_name(key)
 
+        if spec.loader in _SEQ_FILE_LOADERS:
+            # Sequence-level file: one file per sequence directory, one row per frame.
+            # Discover directories that contain the file, mirroring NPYLoader's pattern.
+            if fixed_parts:
+                prefix = Path(*fixed_parts)
+                pattern = str(prefix / "**" / f"{mapped}{spec.ext}")
+            else:
+                pattern = f"**/{mapped}{spec.ext}"
+            seq_files = sorted(self._root.glob(pattern))
+            if self._split_filter:
+                split_layer = next(
+                    (l for l in self._layers if l.type == "split"), None
+                )
+                if split_layer is not None:
+                    seq_files = [
+                        f for f in seq_files
+                        if self._split_filter in f.relative_to(self._root).parts
+                    ]
+            loader_cls = str_to_loader[spec.loader]
+            loaders = [loader_cls(f) for f in seq_files]
+            breaks = [0] + list(np.cumsum([len(l) for l in loaders]))
+            self._seq_loaders[key] = loaders
+            self._seq_breaks[key] = breaks
+            # Expand to flat per-frame list so length checks stay consistent.
+            paths: list[Path] = []
+            for f, loader in zip(seq_files, loaders):
+                paths.extend([f] * len(loader))
+            return paths
+
         if fixed_parts:
             prefix = Path(*fixed_parts)
             pattern = str(prefix / "**" / mapped / f"*{spec.ext}")
@@ -307,7 +341,17 @@ class ProfiledDataset(SynchronousDataset, ConfigurableDataset):
             path = self._files[key][idx]
             if key in self._modalities:
                 spec = self._modalities[key]
-                if spec.ext in _BINARY_EXTS:
+                if key in self._seq_loaders:
+                    breaks = self._seq_breaks[key]
+                    seq_idx = int(np.searchsorted(breaks, idx + 1)) - 1
+                    local_idx = idx - breaks[seq_idx]
+                    arr = self._seq_loaders[key][seq_idx][local_idx].copy()
+                    if spec.reshape:
+                        arr = arr.reshape(spec.reshape)
+                    if spec.resolved_dtype is not None:
+                        arr = arr.astype(spec.resolved_dtype)
+                    data[key] = arr
+                elif spec.ext in _BINARY_EXTS:
                     arr = np.fromfile(path, dtype=np.dtype(spec.dtype))
                     if spec.reshape:
                         arr = arr.reshape(spec.reshape)
