@@ -152,8 +152,8 @@ class ProfiledDataset(SynchronousDataset, ConfigurableDataset):
 
             ds = MyDataset("/data/my_dataset", keys=["lidar", "labels"], split="train")
             sample = ds[0]
-            # sample.data["lidar"]  → np.ndarray
-            # sample.data["labels"] → np.ndarray
+            # sample.data["lidar"]  -> np.ndarray
+            # sample.data["labels"] -> np.ndarray
 
     Attributes:
         available_keys: Frozenset of key names declared in the profile.
@@ -244,7 +244,7 @@ class ProfiledDataset(SynchronousDataset, ConfigurableDataset):
                     if self._ref_key is None:
                         self._ref_key = key
 
-        # Count check via loaders — each loader is the authority on its own length.
+        # Count check via loaders -- each loader is the authority on its own length.
         frame_counts = {k: len(v) for k, v in self._loaders.items()}
         if len(set(frame_counts.values())) > 1:
             raise ValueError(f"Mismatched frame counts per key: {frame_counts}")
@@ -269,6 +269,10 @@ class ProfiledDataset(SynchronousDataset, ConfigurableDataset):
                 paths = discover(key, ext)
                 spec = ModalitySpec(ext=f".{ext}", loader=ext)
                 self._loaders[key] = _PerFrameLoader(paths, spec)
+
+        # Optional native keys with no files on disk are not in _loaders; drop them
+        # so _keys stays consistent with what __getitem__ can actually serve.
+        self._set_keys([k for k in keys if k in self._loaders])
 
     def _seq_root(self, path: Path) -> Path:
         d = path

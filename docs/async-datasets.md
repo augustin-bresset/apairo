@@ -6,12 +6,12 @@ Asynchronous datasets model the reality of multi-sensor recording rigs: each sen
 
 ## Core concept
 
-`ds[i]` returns **one event** — one scan, one image, one IMU reading — at its position in the merged timeline. Only the sensor that produced event `i` is populated in `sample.data`.
+`ds[i]` returns **one event** -- one scan, one image, one IMU reading -- at its position in the merged timeline. Only the sensor that produced event `i` is populated in `sample.data`.
 
 ```python
 sample = ds[0]
-print(sample.timestamp)            # float — seconds since epoch
-print(list(sample.data.keys()))    # ["velodyne_0"]  — exactly one key
+print(sample.timestamp)            # float -- seconds since epoch
+print(list(sample.data.keys()))    # ["velodyne_0"]  -- exactly one key
 print(sample.data["velodyne_0"].shape)
 ```
 
@@ -61,14 +61,14 @@ TartanKittiDataset.describe("/data/tartan/2024-01-01_forest")
 ```
 
 ```
-TartanKittiDataset — 2024-01-01_forest
+TartanKittiDataset -- 2024-01-01_forest
 ──────────────────────────────────────────────────
 Raw channels
   present  : cmd, image_left, velodyne_0
   missing  : depth_left, imu
 
 Preprocessed channels
-  trav_label           npys   ← timestamps from velodyne_0  sources: ['velodyne_0']
+  trav_label           npys   <- timestamps from velodyne_0  sources: ['velodyne_0']
 ```
 
 ---
@@ -88,7 +88,7 @@ channels:
     loader: npys
 ```
 
-Subsequent loads read from `.apairo` and skip the scan. You can inspect or edit this file directly — it is the authoritative record of what is available.
+Subsequent loads read from `.apairo` and skip the scan. You can inspect or edit this file directly -- it is the authoritative record of what is available.
 
 ---
 
@@ -114,7 +114,7 @@ After registration, the channel is available as a loadable key:
 ds = TartanKittiDataset("/data/tartan/2024-01-01_forest", keys=["velodyne_0", "my_channel"])
 ```
 
-`register_channel` is called automatically at the end of every `run_preprocess` call — you only need it for manually placed files.
+`register_channel` is called automatically at the end of every `run_preprocess` call -- you only need it for manually placed files.
 
 ---
 
@@ -143,7 +143,7 @@ for batch in loader:
 
 ## KittiDataset
 
-`KittiDataset` is the base class for any KITTI-layout dataset — one subdirectory per channel, each with a `timestamps.txt` and data files in a format declared by a loader profile YAML.
+`KittiDataset` is the base class for any KITTI-layout dataset -- one subdirectory per channel, each with a `timestamps.txt` and data files in a format declared by a loader profile YAML.
 
 ```python
 from apairo import KittiDataset
@@ -158,7 +158,7 @@ ds = KittiDataset(
 **Profile YAML format:**
 
 ```yaml
-# my_profile.yaml — maps channel name → loader type
+# my_profile.yaml -- maps channel name -> loader type
 lidar: npys
 imu: npy
 camera: img
@@ -196,7 +196,7 @@ class MyDataset(KittiDataset, ConfigurableDataset):
 
 ```
 <sequence_dir>/
-  .apairo               ← created automatically on first load
+  .apairo               <- created automatically on first load
   velodyne_0/
     000000.bin
     000001.bin
@@ -207,6 +207,6 @@ class MyDataset(KittiDataset, ConfigurableDataset):
     ...
     timestamps.txt
   cmd/
-    cmd.npy             ← single stacked file (NPYLoader)
+    cmd.npy             <- single stacked file (NPYLoader)
     timestamps.txt
 ```

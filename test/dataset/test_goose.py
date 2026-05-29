@@ -29,7 +29,7 @@ def goose_root(tmp_path):
         for i in range(n_frames):
             _make_bin(lidar_dir / f"{i:06d}.bin")
             _make_label(label_dir / f"{i:06d}.label")
-    return tmp_path, n_frames * 2  # 2 sequences × n_frames
+    return tmp_path, n_frames * 2  # 2 sequences x n_frames
 
 
 def test_len(goose_root):

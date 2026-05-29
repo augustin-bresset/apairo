@@ -9,7 +9,7 @@ from apairo.core.sample import Sample
 class SynchronousDataset(AbstractDataset):
     """Base class for datasets where index ``i`` returns a complete synchronous frame.
 
-    All modalities at index ``i`` are co-captured — no timestamps, no interleaving.
+    All modalities at index ``i`` are co-captured -- no timestamps, no interleaving.
     ``sample.timestamp`` is always ``None``.  Random access and standard PyTorch
     ``DataLoader`` shuffling work without any additional wrappers.
 
@@ -20,7 +20,7 @@ class SynchronousDataset(AbstractDataset):
     rather than subclassing this directly.
 
     Attributes:
-        timestamps: Always ``None`` — marks this dataset as synchronous.
+        timestamps: Always ``None`` -- marks this dataset as synchronous.
     """
 
     timestamps = None

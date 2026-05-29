@@ -22,7 +22,7 @@ _LOADER_TO_EXT = {
 
 
 def _to_numpy(data) -> np.ndarray:
-    if hasattr(data, "detach"):          # torch.Tensor
+    if hasattr(data, "detach"):  # torch.Tensor
         return data.detach().cpu().numpy()
     return np.asarray(data)
 
@@ -84,7 +84,7 @@ def run(
             f"got {type(preprocessor).__name__}."
         )
 
-    logger.info("Done  →  '%s' registered in %s", preprocessor.output_key, root_dir)
+    logger.info("Done  ->  '%s' registered in %s", preprocessor.output_key, root_dir)
     dataset_cls.register_channel(
         root_dir,
         preprocessor.output_key,
@@ -114,7 +114,9 @@ def _run_frame(preprocessor: FramePreprocessor, dataset, ext: str) -> None:
 
 def _run_sequence(preprocessor: SequencePreprocessor, dataset, ext: str) -> None:
     result = _to_numpy(preprocessor.process(iter(dataset)))
-    out = dataset.root_dir / preprocessor.output_key / f"{preprocessor.output_key}.{ext}"
+    out = (
+        dataset.root_dir / preprocessor.output_key / f"{preprocessor.output_key}.{ext}"
+    )
     WRITERS[preprocessor.output_loader]().write(result, out)
 
     if preprocessor.timestamps_from is None:

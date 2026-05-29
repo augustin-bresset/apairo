@@ -109,7 +109,7 @@ channels:
     sources: [labels]
 ```
 
-This file is read automatically on the next dataset load — no code change needed to use the new key. The `.apairo/` directory can be deleted entirely to reset a dataset to its raw state without touching any data.
+This file is read automatically on the next dataset load -- no code change needed to use the new key. The `.apairo/` directory can be deleted entirely to reset a dataset to its raw state without touching any data.
 
 ---
 

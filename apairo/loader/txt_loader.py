@@ -15,11 +15,11 @@ class TXTLoader(AbstractLoader):
     Args:
         paths: One ``.txt`` file per sequence, each row encoding one frame.
         reshape: Optional shape to apply to each row (e.g. ``[3, 4]`` for a
-            3×4 pose matrix).
+            3x4 pose matrix).
     """
 
     def __init__(self, paths: list[Path], reshape: Optional[list] = None) -> None:
-        arrays = [np.loadtxt(p) for p in sorted(paths)]
+        arrays = [np.atleast_2d(np.loadtxt(p)) for p in sorted(paths)]
         self.array: np.ndarray = np.vstack(arrays) if len(arrays) > 1 else arrays[0]
         self._reshape = reshape
         self._shape: Tuple[int, ...] = (

@@ -15,8 +15,8 @@ ds = apairo.SemanticKittiDataset(
 
 print(len(ds))              # total number of frames across all sequences
 sample = ds[0]
-print(sample.data["lidar"].shape)   # torch.Size([N, 4])  — x, y, z, intensity
-print(sample.data["labels"].shape)  # torch.Size([N])     — semantic class IDs
+print(sample.data["lidar"].shape)   # torch.Size([N, 4])  -- x, y, z, intensity
+print(sample.data["labels"].shape)  # torch.Size([N])     -- semantic class IDs
 print(sample.timestamp)             # None  (synchronous, no timestamps)
 ```
 
@@ -37,8 +37,8 @@ print(ds.keys)              # discovered channels: ["velodyne_0", "image_left", 
 print(len(ds))              # total events across all channels
 
 sample = ds[42]
-print(sample.timestamp)             # float  — seconds
-print(list(sample.data.keys()))     # ["velodyne_0"]  — exactly one channel per event
+print(sample.timestamp)             # float  -- seconds
+print(list(sample.data.keys()))     # ["velodyne_0"]  -- exactly one channel per event
 print(sample.data["velodyne_0"].shape)
 ```
 
@@ -49,7 +49,7 @@ Every `__getitem__` call returns a [`Sample`][apairo.core.sample.Sample]:
 ```python
 @dataclass
 class Sample:
-    data: dict[str, torch.Tensor]   # key → tensor
+    data: dict[str, torch.Tensor]   # key -> tensor
     timestamp: float | None         # None for synchronous datasets
 ```
 
@@ -64,7 +64,7 @@ for sample in ds:
 
 ## Selecting keys
 
-Pass `keys=` to load only the modalities you need — useful when some channels are large or slow to load:
+Pass `keys=` to load only the modalities you need -- useful when some channels are large or slow to load:
 
 ```python
 ds = apairo.SemanticKittiDataset("/data/semantic_kitti", keys=["labels"])

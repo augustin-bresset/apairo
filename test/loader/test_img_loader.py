@@ -15,7 +15,7 @@ def img_loader_data(tmp_path):
 
 def test_len(img_loader_data):
     loader = IMGLoader(str(img_loader_data))
-    assert loader.shape == (16, 16, 3)  # HWC — PIL convention
+    assert loader.shape == (16, 16, 3)  # HWC -- PIL convention
 
 
 def test_iteration(img_loader_data):

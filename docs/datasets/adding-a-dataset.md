@@ -8,11 +8,11 @@ Adding a new synchronous dataset to apairo requires:
 
 ---
 
-## Step 1 — Write the YAML profile
+## Step 1 -- Write the YAML profile
 
 Create `apairo/dataset/profiles/<your_dataset>.yaml`. Study your dataset's folder layout and map it onto the [layer DSL](yaml-profiles.md#layers).
 
-**Example — a hypothetical PandaSet-style layout:**
+**Example -- a hypothetical PandaSet-style layout:**
 
 ```
 <root>/
@@ -53,7 +53,7 @@ modalities:
 
 ---
 
-## Step 2 — Create the Python subclass
+## Step 2 -- Create the Python subclass
 
 Create `apairo/dataset/pandaset/dataset.py`:
 
@@ -83,7 +83,7 @@ And add to `apairo/__init__.py` and its `__all__`.
 
 ---
 
-## Step 3 — Write tests
+## Step 3 -- Write tests
 
 Create `test/dataset/test_pandaset.py`. Use `tmp_path` to build a minimal mock tree:
 
@@ -106,7 +106,7 @@ def pandaset_root(tmp_path):
 
 def test_len(pandaset_root):
     ds = PandaSetDataset(pandaset_root, keys=["lidar"])
-    assert len(ds) == 6   # 2 seqs × 3 frames
+    assert len(ds) == 6   # 2 seqs x 3 frames
 
 def test_getitem_shape(pandaset_root):
     ds = PandaSetDataset(pandaset_root, keys=["lidar"])

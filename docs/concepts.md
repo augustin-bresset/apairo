@@ -27,7 +27,7 @@ image_left/   000000.png   000001.png   ...   timestamps.txt
 imu/          000000.pt    000001.pt    ...   timestamps.txt
 ```
 
-apairo merges all channels into a single timestamp-ordered timeline. `ds[i]` returns one event — the scan or image or IMU reading at position `i` in the global timeline — with its `timestamp` field set. Exactly one key is populated in `sample.data` per event.
+apairo merges all channels into a single timestamp-ordered timeline. `ds[i]` returns one event -- the scan or image or IMU reading at position `i` in the global timeline -- with its `timestamp` field set. Exactly one key is populated in `sample.data` per event.
 
 ---
 
@@ -61,7 +61,7 @@ channels:
     sources: [labels]
 ```
 
-On the next load, apairo reads `.apairo` to discover where derived keys live and which loader to use — no code change needed:
+On the next load, apairo reads `.apairo` to discover where derived keys live and which loader to use -- no code change needed:
 
 ```python
 ds = Goose3DDataset("/data/goose", keys=["lidar", "trav_label"])
@@ -75,7 +75,7 @@ The sidecar is created and updated automatically by `run_preprocess`. You can al
 
 When you request `keys=["lidar", "trav_label"]`:
 
-1. `lidar` is found in the YAML profile → loaded via the binary path
-2. `trav_label` is not in the profile → looked up in `.apairo` → loaded via `DERIVED_LOADERS`
+1. `lidar` is found in the YAML profile -> loaded via the binary path
+2. `trav_label` is not in the profile -> looked up in `.apairo` -> loaded via `DERIVED_LOADERS`
 
-At least one native key (declared in the profile) must be present alongside any derived keys — the native files provide the file-count reference and the derived path template.
+At least one native key (declared in the profile) must be present alongside any derived keys -- the native files provide the file-count reference and the derived path template.

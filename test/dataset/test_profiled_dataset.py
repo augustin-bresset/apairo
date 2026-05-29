@@ -83,14 +83,14 @@ def _make_label(path, n=N_POINTS):
 
 @pytest.fixture
 def goose_root(tmp_path):
-    # Mirrors real GOOSE: root/train/lidar/train/seq/file.bin (fixture omits first split — glob is permissive)
+    # Mirrors real GOOSE: root/train/lidar/train/seq/file.bin (fixture omits first split -- glob is permissive)
     for seq in ["seq_a", "seq_b"]:
         (tmp_path / "lidar" / "train" / seq).mkdir(parents=True)
         (tmp_path / "labels" / "train" / seq).mkdir(parents=True)
         for i in range(3):
             _make_bin(tmp_path / "lidar" / "train" / seq / f"{i:06d}.bin")
             _make_label(tmp_path / "labels" / "train" / seq / f"{i:06d}.label")
-    return tmp_path  # 2 seqs × 3 frames = 6 total
+    return tmp_path  # 2 seqs x 3 frames = 6 total
 
 
 @pytest.fixture
@@ -101,7 +101,7 @@ def kitti_root(tmp_path):
         for i in range(4):
             _make_bin(tmp_path / "sequences" / seq / "velodyne" / f"{i:06d}.bin")
             _make_label(tmp_path / "sequences" / seq / "labels" / f"{i:06d}.label")
-    return tmp_path  # 2 seqs × 4 frames = 8 total
+    return tmp_path  # 2 seqs x 4 frames = 8 total
 
 
 class _GooseDS(ProfiledDataset):
@@ -123,7 +123,7 @@ def test_goose_available_keys():
 
 def test_goose_modality_idx(goose_root):
     ds = _GooseDS(goose_root, keys=["lidar"])
-    assert ds._modality_idx == 0  # lidar/train/seq/file → parts[0]="lidar"
+    assert ds._modality_idx == 0  # lidar/train/seq/file -> parts[0]="lidar"
 
 
 def test_kitti_len(kitti_root):
@@ -133,7 +133,7 @@ def test_kitti_len(kitti_root):
 
 def test_kitti_modality_idx(kitti_root):
     ds = _KittiDS(kitti_root, keys=["lidar"])
-    assert ds._modality_idx == 2  # sequences/00/velodyne/file → parts[2]="velodyne"
+    assert ds._modality_idx == 2  # sequences/00/velodyne/file -> parts[2]="velodyne"
 
 
 def test_invalid_key_raises(goose_root):
@@ -223,7 +223,7 @@ def test_kitti_derived_path_structure(kitti_root):
     ds = _KittiDS(kitti_root, keys=["lidar"])
     p = ds.derived_path(0, "trav_label", "npy")
     rel = p.relative_to(kitti_root)
-    # sequences/00/velodyne/000000.bin → sequences/00/trav_label/000000.npy
+    # sequences/00/velodyne/000000.bin -> sequences/00/trav_label/000000.npy
     assert rel.parts[0] == "sequences"
     assert rel.parts[2] == "trav_label"
     assert rel.parts[-1] == "000000.npy"
@@ -233,7 +233,7 @@ def test_rellis_derived_path_structure(rellis_root):
     ds = _RellisDS(rellis_root, keys=["lidar"])
     p = ds.derived_path(0, "trav_label", "npy")
     rel = p.relative_to(rellis_root)
-    # Rellis-3D/00000/os1_cloud_node_kitti_bin/000000.bin → Rellis-3D/00000/trav_label/000000.npy
+    # Rellis-3D/00000/os1_cloud_node_kitti_bin/000000.bin -> Rellis-3D/00000/trav_label/000000.npy
     assert rel.parts[0] == "Rellis-3D"
     assert rel.parts[2] == "trav_label"
     assert rel.parts[-1] == "000000.npy"
@@ -243,7 +243,7 @@ def test_goose_seq_root(goose_root):
     ds = _GooseDS(goose_root, keys=["lidar"])
     first_file = ds._files["lidar"][0]
     seq = ds._seq_root(first_file)
-    # GOOSE: train/lidar/train/seq_a/000000.bin → _seq_depth=1 → seq_root = first_file.parent
+    # GOOSE: train/lidar/train/seq_a/000000.bin -> _seq_depth=1 -> seq_root = first_file.parent
     assert seq == first_file.parent
 
 
@@ -251,7 +251,7 @@ def test_kitti_seq_root(kitti_root):
     ds = _KittiDS(kitti_root, keys=["lidar"])
     first_file = ds._files["lidar"][0]
     seq = ds._seq_root(first_file)
-    # sequences/00/velodyne/000000.bin → _seq_depth=2 → seq_root = first_file.parent.parent
+    # sequences/00/velodyne/000000.bin -> _seq_depth=2 -> seq_root = first_file.parent.parent
     assert seq == first_file.parent.parent
 
 

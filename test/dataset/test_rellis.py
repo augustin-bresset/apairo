@@ -16,6 +16,10 @@ def _make_label(path: Path, n: int = N_POINTS):
     np.random.randint(0, 20, n, dtype=np.int32).tofile(path)
 
 
+def _make_poses(path: Path, n_frames: int = 3):
+    np.savetxt(path, np.random.rand(n_frames, 12))
+
+
 @pytest.fixture
 def rellis_root(tmp_path):
     n_frames = 3
@@ -27,7 +31,7 @@ def rellis_root(tmp_path):
         for i in range(n_frames):
             _make_bin(bin_dir / f"{i:06d}.bin")
             _make_label(lbl_dir / f"{i:06d}.label")
-    return tmp_path, n_frames * 2  # 2 sequences × n_frames
+    return tmp_path, n_frames * 2  # 2 sequences x n_frames
 
 
 def test_len(rellis_root):
@@ -88,6 +92,38 @@ def test_is_synchronous(rellis_root):
     ds = Rellis3DDataset(root, keys=["lidar"])
     assert ds.timestamps is None
     assert ds.is_synchronous is True
+
+
+@pytest.fixture
+def rellis_root_with_poses(tmp_path):
+    n_frames = 3
+    for seq in ["00000", "00001"]:
+        bin_dir = tmp_path / "Rellis-3D" / seq / "os1_cloud_node_kitti_bin"
+        lbl_dir = tmp_path / "Rellis-3D" / seq / "os1_cloud_node_semantickitti_label_id"
+        bin_dir.mkdir(parents=True)
+        lbl_dir.mkdir(parents=True)
+        for i in range(n_frames):
+            _make_bin(bin_dir / f"{i:06d}.bin")
+            _make_label(lbl_dir / f"{i:06d}.label")
+        _make_poses(tmp_path / "Rellis-3D" / seq / "poses.txt", n_frames)
+    return tmp_path, n_frames * 2
+
+
+def test_poses_shape(rellis_root_with_poses):
+    root, total = rellis_root_with_poses
+    ds = Rellis3DDataset(root, keys=["lidar", "poses"])
+    assert len(ds) == total
+    sample = ds[0]
+    assert "poses" in sample.data
+    assert sample.data["poses"].shape == (3, 4)
+
+
+def test_poses_optional_absent(rellis_root):
+    """poses is optional -- absent files should not appear in sample.data."""
+    root, total = rellis_root
+    ds = Rellis3DDataset(root, keys=["lidar", "labels", "poses"])
+    assert len(ds) == total
+    assert "poses" not in ds.keys
 
 
 def test_mismatched_file_counts(tmp_path):

@@ -1,6 +1,6 @@
 # YAML Profiles
 
-A YAML profile fully describes the structure of a synchronous dataset — which directories to traverse, how files map to keys, and how to cast raw bytes into tensors. Profiles live in `apairo/dataset/profiles/`.
+A YAML profile fully describes the structure of a synchronous dataset -- which directories to traverse, how files map to keys, and how to cast raw bytes into tensors. Profiles live in `apairo/dataset/profiles/`.
 
 A profile has two top-level sections: `layers` and `modalities`.
 
@@ -53,20 +53,20 @@ Marks the depth at which individual recording sessions live. The system uses thi
 
 Marks the depth at which per-channel subdirectories live. Has two forms:
 
-**Plain string** — the folder name equals the key name:
+**Plain string** -- the folder name equals the key name:
 
 ```yaml
 - modality
-# key "lidar" → folder "lidar/"
-# key "labels" → folder "labels/"
+# key "lidar" -> folder "lidar/"
+# key "labels" -> folder "labels/"
 ```
 
-**Mapping** — explicit key → folder renames:
+**Mapping** -- explicit key -> folder renames:
 
 ```yaml
 - modality:
-    lidar: velodyne         # key "lidar" → folder "velodyne/"
-    labels: labels          # key "labels" → folder "labels/"
+    lidar: velodyne         # key "lidar" -> folder "velodyne/"
+    labels: labels          # key "labels" -> folder "labels/"
 ```
 
 ---
@@ -94,23 +94,23 @@ modalities:
 |---|---|---|
 | `ext` | yes* | File extension, with or without leading dot (`.bin`, `bin`, `.label`, `.npy`, `.png`, `.jpg`, `.pt`, `.txt`). Required for per-frame modalities; can be omitted for sequence-file loaders that imply their own extension. |
 | `dtype` | no | NumPy dtype string used by `np.fromfile` for binary formats (`.bin`, `.label`). Not used for structured formats or sequence-file loaders. |
-| `reshape` | no | List of ints passed to `ndarray.reshape()` after loading. Use `[-1, 4]` for `(N, 4)` point clouds, `[3, 4]` for a 3×4 pose matrix. |
+| `reshape` | no | List of ints passed to `ndarray.reshape()` after loading. Use `[-1, 4]` for `(N, 4)` point clouds, `[3, 4]` for a 3x4 pose matrix. |
 | `mask` | no | Integer bitmask applied as `arr & mask` before dtype conversion. Use `65535` (`0xFFFF`) to strip SemanticKITTI instance bits. |
-| `torch_dtype` | no | NumPy dtype name for a final `.astype()` cast — e.g., `int64` to convert `int32` labels. |
+| `torch_dtype` | no | NumPy dtype name for a final `.astype()` cast -- e.g., `int64` to convert `int32` labels. |
 | `loader` | no | Override the default loader. Per-frame: `bin`, `npy`, `img`, `pt`. Sequence-file: `txt_rows` (one row per frame in a single `.txt` file). |
 | `subpath` | no | Extra path components below the modality directory. Use when there is an additional sub-folder between the channel directory and the files. |
 | `optional` | no | If `true`, the key is silently skipped when absent from disk instead of raising `FileNotFoundError`. Default: `false`. |
 
 ### Loader selection
 
-For binary formats (`.bin`, `.label`), apairo uses `np.fromfile` directly — `dtype`, `reshape`, `mask`, and `torch_dtype` all apply.
+For binary formats (`.bin`, `.label`), apairo uses `np.fromfile` directly -- `dtype`, `reshape`, `mask`, and `torch_dtype` all apply.
 
 For structured formats, the appropriate loader is selected by extension:
 
 | Extension | Loader | Notes |
 |---|---|---|
-| `.npy` | `npy` | `np.load` → `torch.from_numpy` |
-| `.png`, `.jpg` | `img` | `torchvision.io.read_image` → `torch.Tensor` (CHW, uint8) |
+| `.npy` | `npy` | `np.load` -> `torch.from_numpy` |
+| `.png`, `.jpg` | `img` | `torchvision.io.read_image` -> `torch.Tensor` (CHW, uint8) |
 | `.pt` | `pt` | `torch.load(weights_only=True)` |
 
 `reshape`, `mask`, and `torch_dtype` are applied after loading for structured formats as well.
@@ -126,14 +126,14 @@ For structured formats, the appropriate loader is selected by extension:
       - fixed: sequences    # root/sequences/ always present
       - sequence            # root/sequences/00/, root/sequences/01/, ...
       - modality:
-          lidar: velodyne   # "lidar" key → velodyne/ subdirectory
-          labels: labels    # "labels" key → labels/ subdirectory
+          lidar: velodyne   # "lidar" key -> velodyne/ subdirectory
+          labels: labels    # "labels" key -> labels/ subdirectory
 
     modalities:
       lidar:
         ext: .bin
         dtype: float32
-        reshape: [-1, 4]      # (N*4,) → (N, 4): x, y, z, intensity
+        reshape: [-1, 4]      # (N*4,) -> (N, 4): x, y, z, intensity
       labels:
         ext: .label
         dtype: int32
@@ -146,7 +146,7 @@ For structured formats, the appropriate loader is selected by extension:
     ```yaml
     layers:
       - split: [train, val, test]   # root/lidar/train/
-      - modality                    # root/lidar/train/seq/ — folder = key name
+      - modality                    # root/lidar/train/seq/ -- folder = key name
       - split: [train, val, test]   # root/labels/train/
       - sequence                    # root/labels/train/seq_001/
 
@@ -186,6 +186,6 @@ For structured formats, the appropriate loader is selected by extension:
       poses:
         ext: .txt
         loader: txt_rows    # single file per sequence, one row = one frame
-        reshape: [3, 4]     # 12 floats → 3×4 transformation matrix
+        reshape: [3, 4]     # 12 floats -> 3x4 transformation matrix
         optional: true
     ```

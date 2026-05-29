@@ -50,11 +50,11 @@ class ConfigurableDataset:
 
         Args:
             sequence_dir: Dataset sequence directory.
-            key: Channel name — must match its subdirectory name.
+            key: Channel name -- must match its subdirectory name.
             loader: Data format: ``"npy"``, ``"npys"``, ``"bin"``, or ``"img"``.
             timestamps_from: Channel whose timestamps to share when this channel
                 has no ``timestamps.txt`` of its own.
-            sources: Provenance — channels this channel was derived from.
+            sources: Provenance -- channels this channel was derived from.
         """
         _register_channel(
             sequence_dir,
@@ -116,9 +116,9 @@ class ConfigurableDataset:
         Reads ``.apairo`` (creating it if absent) and cross-references it with
         the class's :attr:`available_keys` to produce a three-way breakdown:
 
-        - **raw / present** — raw channels on disk and registered
-        - **raw / missing** — raw channels known from the profile but not on disk
-        - **preprocess** — channels produced by a preprocessing pipeline
+        - **raw / present** -- raw channels on disk and registered
+        - **raw / missing** -- raw channels known from the profile but not on disk
+        - **preprocess** -- channels produced by a preprocessing pipeline
 
         Returns the breakdown as a dict and prints a human-readable summary.
 
@@ -145,7 +145,7 @@ class ConfigurableDataset:
         )
 
         # --- pretty print ---
-        print(f"\n{cls.__name__} — {sequence_dir.name}")
+        print(f"\n{cls.__name__} -- {sequence_dir.name}")
         print("─" * 50)
 
         print("Raw channels")
@@ -160,9 +160,9 @@ class ConfigurableDataset:
         if preprocess:
             for key, meta in sorted(preprocess.items()):
                 ts_info = (
-                    f"← timestamps from {meta['timestamps_from']}"
+                    f"<- timestamps from {meta['timestamps_from']}"
                     if "timestamps_from" in meta
-                    else "← own timestamps"
+                    else "<- own timestamps"
                 )
                 src_info = (
                     f"  sources: {meta['sources']}" if meta.get("sources") else ""

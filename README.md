@@ -1,6 +1,6 @@
 # apairo
 
-Unified Python loader for robotics sensor datasets — synchronous (SemanticKITTI, GOOSE, Rellis-3D) and asynchronous (TartanDrive, KITTI) layouts with built-in preprocessing pipelines.
+Unified Python loader for robotics sensor datasets -- synchronous (SemanticKITTI, GOOSE, Rellis-3D) and asynchronous (TartanDrive, KITTI) layouts with built-in preprocessing pipelines.
 
 All data is returned as `numpy.ndarray`. Convert to the framework of your choice.
 
@@ -12,7 +12,7 @@ All data is returned as `numpy.ndarray`. Convert to the framework of your choice
 pip install -e .
 ```
 
-And soon 
+And soon
 ```bash
 pip install apairo
 ```
@@ -33,18 +33,18 @@ Requires Python ≥ 3.11.
 ```python
 import apairo
 
-# Synchronous: SemanticKITTI — index i returns one complete frame
+# Synchronous: SemanticKITTI -- index i returns one complete frame
 ds = apairo.SemanticKittiDataset("/data/semantic_kitti", keys=["lidar", "labels"])
 sample = ds[0]
-# sample.data["lidar"]   → np.ndarray (N, 4)  float32  [x, y, z, intensity]
-# sample.data["labels"]  → np.ndarray (N,)    int64
-# sample.timestamp       → None
+# sample.data["lidar"]   -> np.ndarray (N, 4)  float32  [x, y, z, intensity]
+# sample.data["labels"]  -> np.ndarray (N,)    int64
+# sample.timestamp       -> None
 
-# Asynchronous: TartanDrive — index i returns one event from the merged timeline
+# Asynchronous: TartanDrive -- index i returns one event from the merged timeline
 ds = apairo.TartanKittiDataset("/data/tartan/2024-01-01_forest")
 sample = ds[0]
-# sample.data        → {"velodyne_0": np.ndarray}   (one modality per event)
-# sample.timestamp   → float
+# sample.data        -> {"velodyne_0": np.ndarray}   (one modality per event)
+# sample.timestamp   -> float
 ```
 
 ### Framework conversion
@@ -105,13 +105,15 @@ Goose3DDataset.run_preprocess(TravLabel(), "/data/goose")
 ## Combining datasets
 
 ```python
-sequences = [
-    apairo.SemanticKittiDataset(f"/data/kitti/seq_{i:02d}", keys=["lidar", "labels"])
-    for i in range(11)
-]
+# One instance loads all sequences under the root automatically
+ds = apairo.SemanticKittiDataset("/data/kitti/dataset", keys=["lidar", "labels"])
 
-combined = apairo.ConcatDataset(sequences)
-train, val, test = apairo.split_sequences(sequences, ratios=(0.8, 0.1, 0.1))
+# Datasets with a split layer support train/val/test filtering
+ds_train = apairo.Goose3DDataset("/data/goose/GOOSE_3D", keys=["lidar", "labels"], split="train")
+ds_val   = apairo.Goose3DDataset("/data/goose/GOOSE_3D", keys=["lidar", "labels"], split="val")
+
+# Combine multiple independent datasets (e.g. different data sources)
+combined = apairo.ConcatDataset([ds_train, ds_val])
 ```
 
 ---

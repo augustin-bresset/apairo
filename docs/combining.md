@@ -4,17 +4,17 @@
 
 `ConcatDataset` concatenates multiple dataset instances into one. It intersects the available keys across all datasets, so every index always returns the same set of modalities.
 
+A single dataset instance already loads all sequences under its root, so `ConcatDataset` is for combining **multiple independent roots** (different drives, different recording sessions):
+
 ```python
 import apairo
 
-sequences = [
-    apairo.SemanticKittiDataset(f"/data/kitti/seq_{i:02d}", keys=["lidar", "labels"])
-    for i in range(11)
-]
+ds1 = apairo.SemanticKittiDataset("/data/kitti_drive1", keys=["lidar", "labels"])
+ds2 = apairo.SemanticKittiDataset("/data/kitti_drive2", keys=["lidar", "labels"])
 
-combined = apairo.ConcatDataset(sequences)
-print(len(combined))        # sum of all sequence lengths
-sample = combined[0]        # first frame from the first sequence
+combined = apairo.ConcatDataset([ds1, ds2])
+print(len(combined))        # sum of all frame counts
+sample = combined[0]        # first frame from the first root
 ```
 
 Indexing is O(log n) via binary search over cumulative lengths.
@@ -23,17 +23,27 @@ Indexing is O(log n) via binary search over cumulative lengths.
 
 ## Sequence-level splits
 
-`split_sequences` partitions a list of dataset objects at the **sequence level**, avoiding temporal leakage between train and validation sets.
+`split_sequences` partitions a list of dataset objects at the **sequence level**, avoiding temporal leakage between train and validation sets. It is useful when you have multiple independent roots that you want to split by ratio:
 
 ```python
-train, val, test = apairo.split_sequences(sequences, ratios=(0.8, 0.1, 0.1))
+roots = [f"/data/kitti/drive_{i:02d}" for i in range(10)]
+datasets = [apairo.SemanticKittiDataset(r, keys=["lidar", "labels"]) for r in roots]
+
+train, val, test = apairo.split_sequences(datasets, ratios=(0.8, 0.1, 0.1))
 
 train_ds = apairo.ConcatDataset(train)
 val_ds   = apairo.ConcatDataset(val)
 test_ds  = apairo.ConcatDataset(test)
 ```
 
-The split is positional (first 80% of sequences → train, etc.) rather than random, which preserves temporal structure within each split.
+For datasets that have a built-in split layout (GOOSE, Rellis-3D), use the `split=` parameter instead:
+
+```python
+train_ds = apairo.Goose3DDataset("/data/GOOSE_3D", keys=["lidar", "labels"], split="train")
+val_ds   = apairo.Goose3DDataset("/data/GOOSE_3D", keys=["lidar", "labels"], split="val")
+```
+
+The split is positional (first 80% of sequences -> train, etc.) rather than random, which preserves temporal structure within each split.
 
 !!! warning "Use sequence-level splits, not frame-level"
     Frame-level random splits on time-series data leak future context into validation. Always split at the sequence boundary.
@@ -78,7 +88,7 @@ ds = MyTartanDataset("/data/tartan/seq", keys=["velodyne_0"])
 loader = DataLoader(ds, batch_size=1, num_workers=0)
 ```
 
-The one-line subclass is intentional — you own this integration point and can add custom `collate_fn`, worker init, or sampling logic without touching the library.
+The one-line subclass is intentional -- you own this integration point and can add custom `collate_fn`, worker init, or sampling logic without touching the library.
 
 ---
 
@@ -87,9 +97,9 @@ The one-line subclass is intentional — you own this integration point and can 
 You can concatenate datasets of different types as long as they share at least one key. The intersection is taken automatically:
 
 ```python
-kitti_seqs = [apairo.SemanticKittiDataset(p, keys=["lidar", "labels"]) for p in kitti_paths]
-goose_seqs = [apairo.Goose3DDataset(p, keys=["lidar", "labels"]) for p in goose_paths]
+kitti = apairo.SemanticKittiDataset("/data/kitti", keys=["lidar", "labels"])
+goose = apairo.Goose3DDataset("/data/GOOSE_3D", keys=["lidar", "labels"], split="train")
 
-combined = apairo.ConcatDataset(kitti_seqs + goose_seqs)
-# keys = {"lidar", "labels"}  — intersection, both share these
+combined = apairo.ConcatDataset([kitti, goose])
+# keys = {"lidar", "labels"}  -- intersection, both share these
 ```

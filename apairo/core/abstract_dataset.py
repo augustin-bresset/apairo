@@ -27,7 +27,7 @@ class AbstractDataset(ABC):
         keys: Active channels loaded for this instance.
         timestamps: Per-channel timestamp arrays, or ``None`` for synchronous datasets.
         loaders: Per-channel loader objects.
-        calibration: Sensor extrinsics — see :attr:`calibration`.
+        calibration: Sensor extrinsics -- see :attr:`calibration`.
     """
 
     available_keys: ClassVar[FrozenSet[str]] = frozenset()
@@ -63,7 +63,7 @@ class AbstractDataset(ABC):
     def calibration(self) -> Dict[str, np.ndarray]:
         """Sensor extrinsics for this dataset.
 
-        Keys follow the convention ``"<from>_to_<to>"`` and values are 4×4
+        Keys follow the convention ``"<from>_to_<to>"`` and values are 4x4
         homogeneous transformation matrices (float64).  Returns an empty dict
         when the dataset provides no calibration.
 

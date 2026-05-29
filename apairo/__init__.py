@@ -1,4 +1,4 @@
-"""Apairo — unified robotics dataset loader."""
+"""Apairo -- unified robotics dataset loader."""
 
 import logging
 

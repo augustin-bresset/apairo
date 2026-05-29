@@ -22,7 +22,7 @@ class TartanKittiDataset(KittiDataset, ConfigurableDataset):
     r"""TartanDrive v2 dataset (KITTI layout).
 
     Accepts either a single sequence directory or a root directory that contains
-    multiple sequences — the structure is auto-detected.
+    multiple sequences -- the structure is auto-detected.
 
     Single sequence::
 
@@ -34,7 +34,7 @@ class TartanKittiDataset(KittiDataset, ConfigurableDataset):
         len(ds)           # total events across all sequences
         ds.sequences      # list[TartanKittiDataset], one per sequence
 
-    Lazy init — inspect before loading::
+    Lazy init -- inspect before loading::
 
         ds = TartanKittiDataset(root_or_seq_dir)
         ds.available                 # frozenset of available channels
@@ -43,7 +43,7 @@ class TartanKittiDataset(KittiDataset, ConfigurableDataset):
 
     Args:
         path: Single sequence directory **or** root directory.
-        keys: Channels to load. ``None`` → lazy (no loaders). ``"all"`` → all
+        keys: Channels to load. ``None`` -> lazy (no loaders). ``"all"`` -> all
             channels present in ``.apairo``.
     """
 
@@ -144,7 +144,7 @@ class TartanKittiDataset(KittiDataset, ConfigurableDataset):
 
     @property
     def available(self) -> frozenset:
-        """Channels available — intersection across all sequences for root datasets."""
+        """Channels available -- intersection across all sequences for root datasets."""
         if self._is_root:
             if not self._sequences:
                 return frozenset()
@@ -279,7 +279,7 @@ class TartanKittiDataset(KittiDataset, ConfigurableDataset):
 
     @classmethod
     def describe(cls, path: str | Path) -> dict:
-        """Describe available channels — auto-detects root vs sequence directory.
+        """Describe available channels -- auto-detects root vs sequence directory.
 
         Root directory: lists each sequence with its raw and preprocessed channels.
         Sequence directory: shows raw present/missing and preprocessed channels.
@@ -302,7 +302,7 @@ class TartanKittiDataset(KittiDataset, ConfigurableDataset):
             return {}
 
         n = len(seq_dirs)
-        print(f"\n{cls.__name__} — {path.name} ({n} sequence{'s' if n > 1 else ''})")
+        print(f"\n{cls.__name__} -- {path.name} ({n} sequence{'s' if n > 1 else ''})")
         print("─" * 50)
 
         result = {}

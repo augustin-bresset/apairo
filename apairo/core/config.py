@@ -48,11 +48,11 @@ def register_channel(
 
     Args:
         root_dir: Dataset root directory.
-        key: Channel name — must match its subdirectory name.
+        key: Channel name -- must match its subdirectory name.
         loader: Data format: ``"npy"``, ``"npys"``, ``"bin"``, or ``"img"``.
         timestamps_from: Channel whose timestamps to share when this channel
             has no ``timestamps.txt`` of its own.
-        sources: Provenance — raw channels this channel was derived from.
+        sources: Provenance -- raw channels this channel was derived from.
     """
     root_dir = Path(root_dir)
     config = (

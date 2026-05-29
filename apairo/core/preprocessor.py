@@ -18,7 +18,7 @@ class Preprocessor(ABC):
     output_key : str
         Subdirectory name for the output channel (e.g. ``"trav_label"``).
     output_loader : str
-        Storage format — ``"npys"`` (one file per frame), ``"npy"`` (single
+        Storage format -- ``"npys"`` (one file per frame), ``"npy"`` (single
         stacked file), or ``"bin"`` (raw binary, one file per frame).
     input_keys : list[str]
         Dataset channels needed as input.
@@ -27,7 +27,7 @@ class Preprocessor(ABC):
         timestamps.  If set to a channel name the output borrows that channel's
         timestamps and no file is written.
     sources : list[str] or None
-        Provenance — channels this output was derived from (stored in
+        Provenance -- channels this output was derived from (stored in
         ``.apairo`` for reference).
     """
 

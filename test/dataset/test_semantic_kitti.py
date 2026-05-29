@@ -27,7 +27,7 @@ def kitti_root(tmp_path):
         for i in range(n_frames):
             _make_bin(vel / f"{i:06d}.bin")
             _make_label(lbl / f"{i:06d}.label")
-    return tmp_path, n_frames * 2  # 2 sequences × n_frames
+    return tmp_path, n_frames * 2  # 2 sequences x n_frames
 
 
 def test_len(kitti_root):
@@ -91,7 +91,7 @@ def test_is_synchronous(kitti_root):
 
 
 def test_label_lower_16_bits(kitti_root):
-    """SemanticKITTI labels encode instance in upper bits — only lower 16 bits are semantic."""
+    """SemanticKITTI labels encode instance in upper bits -- only lower 16 bits are semantic."""
     root, _ = kitti_root
     # Write a label file where upper bits are set
     path = sorted((root / "sequences" / "00" / "labels").glob("*.label"))[0]
